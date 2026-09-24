@@ -1,0 +1,18 @@
+[workspace]
+resolver = "3"
+# Rust plugins must be listed here. Plugins in other languages live under
+# plugins/ too but are not cargo members.
+members = ["crates/herdr-client", "plugins/command-palette"]
+
+[workspace.package]
+edition = "2024"
+
+[workspace.dependencies]
+herdr-client = { path = "crates/herdr-client" }
+nucleo-matcher = "0.3"
+ratatui = "0.30"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+toml = "1"

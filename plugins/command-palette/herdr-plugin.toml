@@ -1,0 +1,24 @@
+id = "jacob.command-palette"
+name = "Command Palette"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Editor-style fuzzy command palette for workspaces, tabs, agents, and commands"
+platforms = ["macos", "linux"]
+
+[[build]]
+command = ["cargo", "build", "--release", "--target-dir", "target"]
+
+# Keybindings target actions, not panes, so this action opens the popup.
+[[actions]]
+id = "open"
+title = "Open command palette"
+contexts = ["workspace"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin jacob.command-palette --entrypoint palette"]
+
+[[panes]]
+id = "palette"
+title = "Command Palette"
+placement = "popup"
+width = "60%"
+height = "50%"
+command = ["target/release/command-palette", "ui"]
