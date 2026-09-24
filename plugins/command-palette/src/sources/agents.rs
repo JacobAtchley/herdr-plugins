@@ -7,12 +7,8 @@ pub fn items(agents: &[Agent], workspaces: &[Workspace], tabs: &[Tab], ctx: &Plu
     agents
         .iter()
         .map(|agent| {
-            let name = agent
-                .name
-                .as_deref()
-                .or(agent.display_agent.as_deref())
-                .or(agent.agent.as_deref())
-                .unwrap_or("agent");
+            let name =
+                agent.name.as_deref().or(agent.display_agent.as_deref()).or(agent.agent.as_deref()).unwrap_or("agent");
             let title = format!("{name} ({})", super::workspace_label(workspaces, &agent.workspace_id));
             let mut keywords = vec![agent.agent_status.as_str().to_string()];
             keywords.extend(agent.agent.clone());

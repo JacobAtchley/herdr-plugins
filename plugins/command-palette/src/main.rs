@@ -37,9 +37,7 @@ fn main() -> ExitCode {
 }
 
 fn env_dir(var: &str) -> PathBuf {
-    std::env::var_os(var)
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir().join("herdr-command-palette"))
+    std::env::var_os(var).map(PathBuf::from).unwrap_or_else(|| std::env::temp_dir().join("herdr-command-palette"))
 }
 
 fn run_ui() -> std::io::Result<()> {
@@ -70,7 +68,8 @@ fn run_ui() -> std::io::Result<()> {
     };
 
     let now = now_unix();
-    let scores: HashMap<String, f64> = items.iter().map(|item| (item.id.clone(), frecency.score(&item.id, now))).collect();
+    let scores: HashMap<String, f64> =
+        items.iter().map(|item| (item.id.clone(), frecency.score(&item.id, now))).collect();
     let mut app = App::new(items, scores, status);
 
     let mut terminal = ratatui::init();

@@ -139,21 +139,15 @@ impl Builtin {
         let label = optional(input);
 
         Ok(match self {
-            Builtin::NewWorkspace => {
-                ("workspace.create", json!({"cwd": cwd, "label": label, "focus": true}))
+            Builtin::NewWorkspace => ("workspace.create", json!({"cwd": cwd, "label": label, "focus": true})),
+            Builtin::RenameWorkspace => {
+                ("workspace.rename", json!({"workspace_id": workspace()?, "label": required(input, "label")?}))
             }
-            Builtin::RenameWorkspace => (
-                "workspace.rename",
-                json!({"workspace_id": workspace()?, "label": required(input, "label")?}),
-            ),
             Builtin::CloseWorkspace => ("workspace.close", json!({"workspace_id": workspace()?})),
-            Builtin::NewTab => (
-                "tab.create",
-                json!({"workspace_id": workspace()?, "cwd": cwd, "label": label, "focus": true}),
-            ),
-            Builtin::RenameTab => {
-                ("tab.rename", json!({"tab_id": tab()?, "label": required(input, "label")?}))
+            Builtin::NewTab => {
+                ("tab.create", json!({"workspace_id": workspace()?, "cwd": cwd, "label": label, "focus": true}))
             }
+            Builtin::RenameTab => ("tab.rename", json!({"tab_id": tab()?, "label": required(input, "label")?})),
             Builtin::CloseTab => ("tab.close", json!({"tab_id": tab()?})),
             Builtin::SplitRight => split(pane()?, "right", cwd),
             Builtin::SplitDown => split(pane()?, "down", cwd),
@@ -168,10 +162,9 @@ impl Builtin {
                     "focus": true
                 }),
             ),
-            Builtin::MovePaneToNewWorkspace => (
-                "pane.move",
-                json!({"pane_id": pane()?, "destination": {"type": "new_workspace"}, "focus": true}),
-            ),
+            Builtin::MovePaneToNewWorkspace => {
+                ("pane.move", json!({"pane_id": pane()?, "destination": {"type": "new_workspace"}, "focus": true}))
+            }
             Builtin::CreateWorktree => (
                 "worktree.create",
                 json!({"workspace_id": workspace()?, "branch": required(input, "branch")?, "focus": true}),
@@ -209,10 +202,7 @@ fn confirm(what: &str, label: Option<&str>) -> Step {
 }
 
 fn split(pane: String, direction: &str, cwd: &Option<String>) -> (&'static str, Value) {
-    (
-        "pane.split",
-        json!({"target_pane_id": pane, "direction": direction, "cwd": cwd, "focus": true}),
-    )
+    ("pane.split", json!({"target_pane_id": pane, "direction": direction, "cwd": cwd, "focus": true}))
 }
 
 fn need(value: &Option<String>, what: &str) -> Result<String, String> {
@@ -262,19 +252,54 @@ mod tests {
             (Builtin::NewWorkspace, "", "workspace.create", json!({"cwd": "/repo", "label": null, "focus": true})),
             (Builtin::RenameWorkspace, " core ", "workspace.rename", json!({"workspace_id": "w6", "label": "core"})),
             (Builtin::CloseWorkspace, "", "workspace.close", json!({"workspace_id": "w6"})),
-            (Builtin::NewTab, "logs", "tab.create", json!({"workspace_id": "w6", "cwd": "/repo", "label": "logs", "focus": true})),
+            (
+                Builtin::NewTab,
+                "logs",
+                "tab.create",
+                json!({"workspace_id": "w6", "cwd": "/repo", "label": "logs", "focus": true}),
+            ),
             (Builtin::RenameTab, "Review", "tab.rename", json!({"tab_id": "w6:t1", "label": "Review"})),
             (Builtin::CloseTab, "", "tab.close", json!({"tab_id": "w6:t1"})),
-            (Builtin::SplitRight, "", "pane.split", json!({"target_pane_id": "w6:p1", "direction": "right", "cwd": "/repo", "focus": true})),
-            (Builtin::SplitDown, "", "pane.split", json!({"target_pane_id": "w6:p1", "direction": "down", "cwd": "/repo", "focus": true})),
+            (
+                Builtin::SplitRight,
+                "",
+                "pane.split",
+                json!({"target_pane_id": "w6:p1", "direction": "right", "cwd": "/repo", "focus": true}),
+            ),
+            (
+                Builtin::SplitDown,
+                "",
+                "pane.split",
+                json!({"target_pane_id": "w6:p1", "direction": "down", "cwd": "/repo", "focus": true}),
+            ),
             (Builtin::ToggleZoom, "", "pane.zoom", json!({"pane_id": "w6:p1", "mode": "toggle"})),
             (Builtin::RenamePane, "server", "pane.rename", json!({"pane_id": "w6:p1", "label": "server"})),
             (Builtin::RenamePane, "", "pane.rename", json!({"pane_id": "w6:p1", "label": null})),
             (Builtin::ClosePane, "", "pane.close", json!({"pane_id": "w6:p1"})),
-            (Builtin::MovePaneToNewTab, "", "pane.move", json!({"pane_id": "w6:p1", "destination": {"type": "new_tab", "workspace_id": "w6"}, "focus": true})),
-            (Builtin::MovePaneToNewWorkspace, "", "pane.move", json!({"pane_id": "w6:p1", "destination": {"type": "new_workspace"}, "focus": true})),
-            (Builtin::CreateWorktree, "feat/x", "worktree.create", json!({"workspace_id": "w6", "branch": "feat/x", "focus": true})),
-            (Builtin::OpenWorktree, "main", "worktree.open", json!({"workspace_id": "w6", "branch": "main", "focus": true})),
+            (
+                Builtin::MovePaneToNewTab,
+                "",
+                "pane.move",
+                json!({"pane_id": "w6:p1", "destination": {"type": "new_tab", "workspace_id": "w6"}, "focus": true}),
+            ),
+            (
+                Builtin::MovePaneToNewWorkspace,
+                "",
+                "pane.move",
+                json!({"pane_id": "w6:p1", "destination": {"type": "new_workspace"}, "focus": true}),
+            ),
+            (
+                Builtin::CreateWorktree,
+                "feat/x",
+                "worktree.create",
+                json!({"workspace_id": "w6", "branch": "feat/x", "focus": true}),
+            ),
+            (
+                Builtin::OpenWorktree,
+                "main",
+                "worktree.open",
+                json!({"workspace_id": "w6", "branch": "main", "focus": true}),
+            ),
             (Builtin::ReloadConfig, "", "server.reload_config", json!({})),
         ];
         for (builtin, input, method, params) in cases {
@@ -305,10 +330,7 @@ mod tests {
         let c = ctx();
         assert_eq!(Builtin::SplitRight.step(&c), Step::Run);
         assert_eq!(Builtin::ReloadConfig.step(&c), Step::Run);
-        assert_eq!(
-            Builtin::RenameTab.step(&c),
-            Step::Prompt { label: "Rename tab".into(), initial: "Claude".into() }
-        );
+        assert_eq!(Builtin::RenameTab.step(&c), Step::Prompt { label: "Rename tab".into(), initial: "Claude".into() });
         assert_eq!(
             Builtin::RenameWorkspace.step(&c),
             Step::Prompt { label: "Rename workspace".into(), initial: "herdr-plugins".into() }
@@ -332,10 +354,7 @@ mod tests {
     #[test]
     fn confirm_without_labels_uses_generic_wording() {
         let empty = PluginContext::default();
-        assert_eq!(
-            Builtin::CloseTab.step(&empty),
-            Step::Confirm { question: "Close the current tab?".into() }
-        );
+        assert_eq!(Builtin::CloseTab.step(&empty), Step::Confirm { question: "Close the current tab?".into() });
     }
 
     #[test]

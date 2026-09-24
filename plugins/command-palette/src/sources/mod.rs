@@ -58,7 +58,12 @@ pub fn load_all(api: &dyn Api, ctx: &PluginContext, config_dir: &Path) -> Loaded
     Loaded { items, notices, remote_failures }
 }
 
-fn or_notice<T>(result: Result<Vec<T>, Error>, source: &str, notices: &mut Vec<String>, failures: &mut usize) -> Vec<T> {
+fn or_notice<T>(
+    result: Result<Vec<T>, Error>,
+    source: &str,
+    notices: &mut Vec<String>,
+    failures: &mut usize,
+) -> Vec<T> {
     result.unwrap_or_else(|err| {
         notices.push(format!("{source} unavailable: {err}"));
         *failures += 1;
@@ -110,8 +115,14 @@ mod tests {
     fn full_api() -> FakeApi {
         FakeApi::new()
             .ok("workspace.list", json!({"workspaces": [{"workspace_id": "w1", "number": 1, "label": "CT"}]}))
-            .ok("tab.list", json!({"tabs": [{"tab_id": "w1:t1", "workspace_id": "w1", "number": 1, "label": "Claude"}]}))
-            .ok("agent.list", json!({"agents": [{"pane_id": "w1:p1", "workspace_id": "w1", "tab_id": "w1:t1", "agent": "claude"}]}))
+            .ok(
+                "tab.list",
+                json!({"tabs": [{"tab_id": "w1:t1", "workspace_id": "w1", "number": 1, "label": "Claude"}]}),
+            )
+            .ok(
+                "agent.list",
+                json!({"agents": [{"pane_id": "w1:p1", "workspace_id": "w1", "tab_id": "w1:t1", "agent": "claude"}]}),
+            )
             .ok("plugin.action.list", json!({"actions": [{"plugin_id": "a.b", "action_id": "c", "title": "Do C"}]}))
     }
 
@@ -178,13 +189,19 @@ mod tests {
 
     #[test]
     fn notice_status_shows_a_single_notice_as_info() {
-        assert_eq!(notice_status(&["agents unavailable: boom".to_string()], 1), Some(Status::Info("agents unavailable: boom".to_string())));
+        assert_eq!(
+            notice_status(&["agents unavailable: boom".to_string()], 1),
+            Some(Status::Info("agents unavailable: boom".to_string()))
+        );
     }
 
     #[test]
     fn notice_status_collapses_several_notices_into_a_count() {
         let notices = vec!["a".to_string(), "b".to_string(), "c".to_string()];
-        assert_eq!(notice_status(&notices, 2), Some(Status::Info("3 sources unavailable — see palette.log".to_string())));
+        assert_eq!(
+            notice_status(&notices, 2),
+            Some(Status::Info("3 sources unavailable — see palette.log".to_string()))
+        );
     }
 
     #[test]

@@ -12,13 +12,9 @@ use crate::app::{App, Mode, Status};
 use crate::item::{Item, Kind};
 
 pub fn render(frame: &mut Frame, app: &App) {
-    let [input, rule, list, footer] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Min(0),
-        Constraint::Length(1),
-    ])
-    .areas(frame.area());
+    let [input, rule, list, footer] =
+        Layout::vertical([Constraint::Length(1), Constraint::Length(1), Constraint::Min(0), Constraint::Length(1)])
+            .areas(frame.area());
     render_input(frame, app, input);
     frame.render_widget(Line::from("─".repeat(usize::from(rule.width))).dim(), rule);
     render_list(frame, app, list);
@@ -96,8 +92,7 @@ fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
         None => Line::from(format!("{} items", app.ranked.len())).dim(),
     };
     let hints_width = u16::try_from(hints.width() + 2).unwrap_or(u16::MAX);
-    let [left_area, right_area] =
-        Layout::horizontal([Constraint::Length(hints_width), Constraint::Min(0)]).areas(area);
+    let [left_area, right_area] = Layout::horizontal([Constraint::Length(hints_width), Constraint::Min(0)]).areas(area);
     frame.render_widget(hints, left_area);
     frame.render_widget(right.right_aligned(), right_area);
 }
@@ -254,4 +249,3 @@ mod tests {
         assert!(rows.contains("⚠️"), "{rows:?}");
     }
 }
-

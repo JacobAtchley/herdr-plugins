@@ -50,9 +50,8 @@ fn request_sends_method_and_params_and_returns_result() {
 
 #[test]
 fn api_error_maps_to_error_api() {
-    let (_dir, path, _server) = serve(vec![
-        r#"{"id":"x","error":{"code":"pane_not_found","message":"pane bogus not found"}}"#.into(),
-    ]);
+    let (_dir, path, _server) =
+        serve(vec![r#"{"id":"x","error":{"code":"pane_not_found","message":"pane bogus not found"}}"#.into()]);
     let err = Client::new(&path).request("pane.get", json!({"pane_id": "bogus"})).unwrap_err();
     match &err {
         Error::Api { method, code, message } => {
@@ -82,9 +81,7 @@ fn missing_result_is_protocol_error() {
 #[test]
 fn unreachable_socket_is_io_error_naming_the_method() {
     let dir = tempfile::tempdir().unwrap();
-    let err = Client::new(dir.path().join("nope.sock"))
-        .request("workspace.list", json!({}))
-        .unwrap_err();
+    let err = Client::new(dir.path().join("nope.sock")).request("workspace.list", json!({})).unwrap_err();
     assert!(matches!(err, Error::Io { ref method, .. } if method == "workspace.list"), "{err:?}");
     assert!(err.to_string().starts_with("workspace.list: "));
 }
@@ -103,12 +100,8 @@ fn typed_list_helpers_parse_fixtures() {
     assert_eq!(client.agent_list().unwrap().len(), 2);
     assert_eq!(client.plugin_action_list().unwrap()[1].action_id, "refresh");
 
-    let methods: Vec<String> = server
-        .join()
-        .unwrap()
-        .iter()
-        .map(|r| r["method"].as_str().unwrap().to_string())
-        .collect();
+    let methods: Vec<String> =
+        server.join().unwrap().iter().map(|r| r["method"].as_str().unwrap().to_string()).collect();
     assert_eq!(methods, ["workspace.list", "tab.list", "agent.list", "plugin.action.list"]);
 }
 

@@ -37,11 +37,9 @@ impl Api for FakeApi {
         self.calls.lock().unwrap().push((method.to_string(), params));
         match self.responses.get(method) {
             Some(Ok(value)) => Ok(value.clone()),
-            Some(Err((code, message))) => Err(Error::Api {
-                method: method.to_string(),
-                code: code.clone(),
-                message: message.clone(),
-            }),
+            Some(Err((code, message))) => {
+                Err(Error::Api { method: method.to_string(), code: code.clone(), message: message.clone() })
+            }
             None => Err(Error::Api {
                 method: method.to_string(),
                 code: "unknown_method".into(),

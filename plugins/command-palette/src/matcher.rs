@@ -54,10 +54,7 @@ pub fn rank(query: &str, items: &[Item], frecency: impl Fn(&str) -> f64) -> Vec<
     };
     ranked.sort_by(|a, b| {
         let (ia, ib) = (&items[a.index], &items[b.index]);
-        b.score
-            .total_cmp(&a.score)
-            .then_with(|| ia.kind.cmp(&ib.kind))
-            .then_with(|| ia.title.cmp(&ib.title))
+        b.score.total_cmp(&a.score).then_with(|| ia.kind.cmp(&ib.kind)).then_with(|| ia.title.cmp(&ib.title))
     });
     ranked
 }
@@ -120,10 +117,7 @@ mod tests {
 
     #[test]
     fn frecency_breaks_equal_text_matches() {
-        let items = vec![
-            item(Kind::Tab, "tab:ct", "CT › Claude"),
-            item(Kind::Tab, "tab:jacob", "jacob › Claude"),
-        ];
+        let items = vec![item(Kind::Tab, "tab:ct", "CT › Claude"), item(Kind::Tab, "tab:jacob", "jacob › Claude")];
         let ranked = rank("claude", &items, |id| if id == "tab:jacob" { 3.0 } else { 0.0 });
         assert_eq!(titles(&items, &ranked), ["jacob › Claude", "CT › Claude"]);
     }
@@ -168,8 +162,7 @@ mod tests {
         // The title is a single grapheme spanning 3 chars; a match in the
         // subtitle at collapsed (grapheme) index 2 must not be misread as a
         // title highlight just because 2 < title.chars().count().
-        let items =
-            vec![Item::new(Kind::Command, "cmd:x", "👨‍💻", Action::FocusWorkspace("x".into())).subtitle("cat")];
+        let items = vec![Item::new(Kind::Command, "cmd:x", "👨‍💻", Action::FocusWorkspace("x".into())).subtitle("cat")];
         let ranked = rank("c", &items, no_frecency);
         assert!(ranked[0].highlights.is_empty(), "{:?}", ranked[0].highlights);
     }

@@ -27,7 +27,10 @@ pub enum Command {
     Continue,
     Quit,
     /// Run `items[item]` with the given prompt input.
-    Run { item: usize, input: String },
+    Run {
+        item: usize,
+        input: String,
+    },
 }
 
 pub struct App {
@@ -43,15 +46,8 @@ pub struct App {
 
 impl App {
     pub fn new(items: Vec<Item>, scores: HashMap<String, f64>, status: Option<Status>) -> Self {
-        let mut app = Self {
-            items,
-            query: String::new(),
-            ranked: Vec::new(),
-            selected: 0,
-            mode: Mode::List,
-            status,
-            scores,
-        };
+        let mut app =
+            Self { items, query: String::new(), ranked: Vec::new(), selected: 0, mode: Mode::List, status, scores };
         app.refilter();
         app
     }

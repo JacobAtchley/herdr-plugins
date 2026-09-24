@@ -56,9 +56,7 @@ fn spawn_detached(cmd: &mut Command, log_dir: &Path) -> Result<(), String> {
         .map(Stdio::from)
         .unwrap_or_else(|_| Stdio::null());
     cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(stderr).process_group(0);
-    cmd.spawn()
-        .map(drop)
-        .map_err(|err| format!("failed to start {}: {err}", cmd.get_program().to_string_lossy()))
+    cmd.spawn().map(drop).map_err(|err| format!("failed to start {}: {err}", cmd.get_program().to_string_lossy()))
 }
 
 #[cfg(test)]
@@ -104,10 +102,8 @@ mod tests {
 
     #[test]
     fn focus_actions_call_the_matching_methods() {
-        let api = FakeApi::new()
-            .ok("workspace.focus", json!({}))
-            .ok("tab.focus", json!({}))
-            .ok("agent.focus", json!({}));
+        let api =
+            FakeApi::new().ok("workspace.focus", json!({})).ok("tab.focus", json!({})).ok("agent.focus", json!({}));
         execute(&api, &Action::FocusWorkspace("w2".into()), &ctx(), "", "herdr", tmp().path()).unwrap();
         execute(&api, &Action::FocusTab("w2:t1".into()), &ctx(), "", "herdr", tmp().path()).unwrap();
         execute(&api, &Action::FocusPane("w2:p1".into()), &ctx(), "", "herdr", tmp().path()).unwrap();
@@ -196,7 +192,15 @@ mod tests {
         std::fs::set_permissions(&fake_herdr, std::fs::Permissions::from_mode(0o755)).unwrap();
 
         let api = FakeApi::new();
-        execute(&api, &Action::InvokePluginAction("a.b.c".into()), &ctx(), "", fake_herdr.to_str().unwrap(), dir.path()).unwrap();
+        execute(
+            &api,
+            &Action::InvokePluginAction("a.b.c".into()),
+            &ctx(),
+            "",
+            fake_herdr.to_str().unwrap(),
+            dir.path(),
+        )
+        .unwrap();
         assert!(!args_file.exists(), "invocation must be delayed until the palette exits");
         assert_eq!(wait_for(&args_file).trim(), "plugin action invoke a.b.c");
         assert!(api.calls().is_empty());

@@ -171,14 +171,9 @@ mod tests {
 
     #[test]
     fn run_builds_sh_command_with_default_cwd() {
-        let cmd = UserCommand {
-            title: "t".into(),
-            run: Some("echo hi".into()),
-            argv: None,
-            keywords: vec![],
-            cwd: None,
-        }
-        .command(Some("/repo"));
+        let cmd =
+            UserCommand { title: "t".into(), run: Some("echo hi".into()), argv: None, keywords: vec![], cwd: None }
+                .command(Some("/repo"));
         assert_eq!(cmd.get_program(), "sh");
         assert_eq!(cmd.get_args().collect::<Vec<_>>(), [OsStr::new("-c"), OsStr::new("echo hi")]);
         assert_eq!(cmd.get_current_dir().unwrap(), std::path::Path::new("/repo"));

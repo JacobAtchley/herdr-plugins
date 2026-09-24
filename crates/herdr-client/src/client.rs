@@ -52,10 +52,7 @@ pub trait Api: Send + Sync {
 
 fn list<T: DeserializeOwned>(mut result: Value, method: &str, field: &str) -> Result<Vec<T>, Error> {
     let protocol = |detail: String| Error::Protocol { method: method.to_string(), detail };
-    let items = result
-        .get_mut(field)
-        .map(Value::take)
-        .ok_or_else(|| protocol(format!("missing `{field}`")))?;
+    let items = result.get_mut(field).map(Value::take).ok_or_else(|| protocol(format!("missing `{field}`")))?;
     serde_json::from_value(items).map_err(|e| protocol(e.to_string()))
 }
 
@@ -102,8 +99,5 @@ fn parse_response(method: &str, reply: &str) -> Result<Value, Error> {
             message: error["message"].as_str().unwrap_or_default().to_string(),
         });
     }
-    value
-        .get_mut("result")
-        .map(Value::take)
-        .ok_or_else(|| protocol("missing `result`".to_string()))
+    value.get_mut("result").map(Value::take).ok_or_else(|| protocol("missing `result`".to_string()))
 }

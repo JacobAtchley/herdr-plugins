@@ -14,8 +14,7 @@ fn result_field(name: &str, field: &str) -> Value {
 
 #[test]
 fn parses_workspaces() {
-    let workspaces: Vec<Workspace> =
-        serde_json::from_value(result_field("workspace_list.json", "workspaces")).unwrap();
+    let workspaces: Vec<Workspace> = serde_json::from_value(result_field("workspace_list.json", "workspaces")).unwrap();
     assert_eq!(workspaces.len(), 3);
     assert_eq!(workspaces[2].workspace_id, "w5");
     assert_eq!(workspaces[2].label, "V9 Orchestrator");
@@ -35,8 +34,7 @@ fn parses_tabs() {
 
 #[test]
 fn parses_agents_with_optional_fields() {
-    let agents: Vec<Agent> =
-        serde_json::from_value(result_field("agent_list.json", "agents")).unwrap();
+    let agents: Vec<Agent> = serde_json::from_value(result_field("agent_list.json", "agents")).unwrap();
     assert_eq!(agents[0].agent.as_deref(), Some("hermes"));
     assert_eq!(agents[0].name, None);
     assert_eq!(agents[0].display_agent, None);
