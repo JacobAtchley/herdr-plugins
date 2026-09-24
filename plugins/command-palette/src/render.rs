@@ -6,6 +6,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style, Stylize};
 use ratatui::text::{Line, Span};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::app::{App, Mode, Status};
 use crate::item::{Item, Kind};
@@ -69,8 +70,8 @@ fn item_line<'a>(item: &'a Item, highlights: &[usize], selected: bool) -> Line<'
         Span::styled(format!("{:<4}", item.kind.badge()), badge_style(item.kind)),
         Span::raw(" "),
     ];
-    spans.extend(item.title.chars().enumerate().map(|(i, c)| {
-        let span = Span::raw(c.to_string());
+    spans.extend(item.title.graphemes(true).enumerate().map(|(i, g)| {
+        let span = Span::raw(g.to_string());
         if highlights.contains(&i) { span.yellow().bold() } else { span }
     }));
     if let Some(subtitle) = &item.subtitle {
@@ -239,4 +240,18 @@ mod tests {
             draw(&app, w, h);
         }
     }
+
+    #[test]
+    fn zwj_and_variation_selector_emoji_render_as_one_cell_symbol() {
+        let items = vec![
+            Item::new(Kind::Command, "cmd:dev", "👨‍💻 dev", Action::FocusTab("x".into())),
+            Item::new(Kind::Command, "cmd:prod", "⚠️ prod", Action::FocusTab("y".into())),
+        ];
+        let app = App::new(items, HashMap::new(), None);
+        let lines = draw(&app, 40, 6);
+        let rows = lines[2..4].join("\n");
+        assert!(rows.contains("👨‍💻"), "{rows:?}");
+        assert!(rows.contains("⚠️"), "{rows:?}");
+    }
 }
+

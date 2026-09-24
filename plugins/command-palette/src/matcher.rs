@@ -2,6 +2,7 @@
 
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::item::Item;
 
@@ -15,7 +16,10 @@ pub const FRECENCY_WEIGHT: f64 = 1.0;
 pub struct Ranked {
     pub index: usize,
     pub score: f64,
-    /// Char indices into the item's title to highlight.
+    /// Grapheme-cluster indices into the item's title to highlight. nucleo
+    /// matches over `Utf32Str`, which collapses each grapheme cluster (e.g. a
+    /// ZWJ emoji sequence or a base character plus combining marks) to one
+    /// unit, so match positions are grapheme indices, not char indices.
     pub highlights: Vec<usize>,
 }
 
@@ -41,7 +45,7 @@ pub fn rank(query: &str, items: &[Item], frecency: impl Fn(&str) -> f64) -> Vec<
                 let score = pattern.indices(Utf32Str::new(&haystack, &mut buf), &mut matcher, &mut indices)?;
                 indices.sort_unstable();
                 indices.dedup();
-                let title_len = item.title.chars().count();
+                let title_len = item.title.graphemes(true).count();
                 let highlights = indices.iter().map(|&i| i as usize).filter(|&i| i < title_len).collect();
                 let boost = frecency(&item.id).min(FRECENCY_CAP) * FRECENCY_WEIGHT;
                 Some(Ranked { index, score: f64::from(score) + boost, highlights })
@@ -149,5 +153,24 @@ mod tests {
             let ranked = rank(query, &items, no_frecency);
             assert!(ranked.len() <= items.len(), "{query}");
         }
+    }
+
+    #[test]
+    fn highlights_are_grapheme_indices_not_char_indices() {
+        // graphemes: ["👨‍💻", " ", "d", "e", "v"] — "👨‍💻" alone is 3 chars.
+        let items = vec![item(Kind::Command, "cmd:dev", "👨‍💻 dev")];
+        let ranked = rank("d", &items, no_frecency);
+        assert_eq!(ranked[0].highlights, [2]);
+    }
+
+    #[test]
+    fn title_bound_uses_grapheme_count_not_char_count() {
+        // The title is a single grapheme spanning 3 chars; a match in the
+        // subtitle at collapsed (grapheme) index 2 must not be misread as a
+        // title highlight just because 2 < title.chars().count().
+        let items =
+            vec![Item::new(Kind::Command, "cmd:x", "👨‍💻", Action::FocusWorkspace("x".into())).subtitle("cat")];
+        let ranked = rank("c", &items, no_frecency);
+        assert!(ranked[0].highlights.is_empty(), "{:?}", ranked[0].highlights);
     }
 }
