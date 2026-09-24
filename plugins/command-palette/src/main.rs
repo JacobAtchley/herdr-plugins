@@ -1,5 +1,6 @@
 mod frecency;
 mod item;
+mod matcher;
 mod sources;
 
 use std::process::ExitCode;
