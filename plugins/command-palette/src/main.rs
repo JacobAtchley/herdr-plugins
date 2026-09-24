@@ -3,6 +3,7 @@ mod frecency;
 mod exec;
 mod item;
 mod matcher;
+mod render;
 mod sources;
 
 #[cfg(test)]
