@@ -50,8 +50,6 @@ Ghostty binds `cmd+k` itself, so free it in `~/.config/ghostty/config`:
 keybind = cmd+k=unbind
 ```
 
-(Replace this block with the variant that worked in Task 12 Step 6 if it was a fallback.)
-
 ### Keys
 
 `↑`/`↓` or `ctrl-p`/`ctrl-n` move · `enter` runs · `esc` closes (or leaves a
