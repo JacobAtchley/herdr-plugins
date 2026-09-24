@@ -1,0 +1,5 @@
+{"id":"t","result":{"type":"tab_list","tabs":[
+  {"tab_id":"w1:t3","workspace_id":"w1","number":3,"label":"Claude","focused":false,"pane_count":1,"agent_status":"unknown"},
+  {"tab_id":"w4:t1","workspace_id":"w4","number":1,"label":"Hermes","focused":false,"pane_count":1,"agent_status":"idle"},
+  {"tab_id":"w5:t2","workspace_id":"w5","number":2,"label":"Claude","focused":true,"pane_count":1,"agent_status":"idle"}
+]}}

@@ -1,0 +1,4 @@
+{"id":"t","result":{"type":"plugin_action_list","actions":[
+  {"plugin_id":"jacob.command-palette","action_id":"open","title":"Open command palette","command":["sh","-c","..."],"contexts":["workspace"],"platforms":["macos","linux"]},
+  {"plugin_id":"hhdebb.herdr-radar","action_id":"refresh","title":"Refresh radar","description":"Rescan agents","command":["radar","refresh"],"contexts":["workspace"]}
+]}}

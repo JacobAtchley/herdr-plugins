@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Rust build output (workspace root and per-plugin target dirs)
+target/

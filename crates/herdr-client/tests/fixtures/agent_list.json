@@ -1,0 +1,4 @@
+{"id":"t","result":{"type":"agent_list","agents":[
+  {"terminal_id":"term_1","agent":"hermes","terminal_title":"hermes","agent_status":"idle","workspace_id":"w4","tab_id":"w4:t1","pane_id":"w4:p1","focused":false,"state_change_seq":20,"cwd":"/Users/me/jacob","revision":6},
+  {"terminal_id":"term_2","agent":"claude","display_agent":"Claude Code","name":"reviewer","terminal_title":"✳ Claude Code","agent_status":"working","agent_session":{"source":"herdr:claude","agent":"claude","kind":"id","value":"13b24a25"},"workspace_id":"w5","tab_id":"w5:t2","pane_id":"w5:p2","focused":true,"state_change_seq":3,"cwd":"/Users/me/v9","revision":2}
+]}}
