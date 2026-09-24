@@ -1,6 +1,8 @@
 //! Runs the selected item's action.
 
+use std::fs::OpenOptions;
 use std::os::unix::process::CommandExt;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use herdr_client::{Api, PluginContext};
@@ -8,8 +10,16 @@ use serde_json::{Value, json};
 
 use crate::item::Action;
 
-/// `input` is the prompt text for built-ins that asked for one.
-pub fn execute(api: &dyn Api, action: &Action, ctx: &PluginContext, input: &str, herdr_bin: &str) -> Result<(), String> {
+/// `input` is the prompt text for built-ins that asked for one. `log_dir` is
+/// where detached commands' stderr is appended (`palette.log`).
+pub fn execute(
+    api: &dyn Api,
+    action: &Action,
+    ctx: &PluginContext,
+    input: &str,
+    herdr_bin: &str,
+    log_dir: &Path,
+) -> Result<(), String> {
     let call = |method: &str, params: Value| api.request(method, params).map(drop).map_err(|e| e.to_string());
     match action {
         Action::FocusWorkspace(id) => call("workspace.focus", json!({"workspace_id": id})),
@@ -19,8 +29,8 @@ pub fn execute(api: &dyn Api, action: &Action, ctx: &PluginContext, input: &str,
             let (method, params) = builtin.request(ctx, input)?;
             call(method, params)
         }
-        Action::InvokePluginAction(id) => spawn_detached(&mut delayed_plugin_invoke(herdr_bin, id)),
-        Action::RunUser(cmd) => spawn_detached(&mut cmd.command(ctx.focused_pane_cwd.as_deref())),
+        Action::InvokePluginAction(id) => spawn_detached(&mut delayed_plugin_invoke(herdr_bin, id), log_dir),
+        Action::RunUser(cmd) => spawn_detached(&mut cmd.command(ctx.focused_pane_cwd.as_deref()), log_dir),
     }
 }
 
@@ -35,8 +45,17 @@ fn delayed_plugin_invoke(herdr_bin: &str, action_id: &str) -> Command {
 
 /// Starts a process that outlives the palette: no inherited stdio (the popup's
 /// terminal goes away) and its own process group (no hangup when it does).
-fn spawn_detached(cmd: &mut Command) -> Result<(), String> {
-    cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).process_group(0);
+/// stderr goes to `palette.log` so a failing user `run` script or plugin
+/// invocation is diagnosable; if the log can't be opened, stderr goes to null
+/// rather than failing the action.
+fn spawn_detached(cmd: &mut Command, log_dir: &Path) -> Result<(), String> {
+    let stderr = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.join("palette.log"))
+        .map(Stdio::from)
+        .unwrap_or_else(|_| Stdio::null());
+    cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(stderr).process_group(0);
     cmd.spawn()
         .map(drop)
         .map_err(|err| format!("failed to start {}: {err}", cmd.get_program().to_string_lossy()))
@@ -65,6 +84,11 @@ mod tests {
         }
     }
 
+    /// A log directory for tests that don't care where diagnostics land.
+    fn tmp() -> tempfile::TempDir {
+        tempfile::tempdir().unwrap()
+    }
+
     fn wait_for(path: &Path) -> String {
         let deadline = Instant::now() + Duration::from_secs(3);
         while Instant::now() < deadline {
@@ -84,9 +108,9 @@ mod tests {
             .ok("workspace.focus", json!({}))
             .ok("tab.focus", json!({}))
             .ok("agent.focus", json!({}));
-        execute(&api, &Action::FocusWorkspace("w2".into()), &ctx(), "", "herdr").unwrap();
-        execute(&api, &Action::FocusTab("w2:t1".into()), &ctx(), "", "herdr").unwrap();
-        execute(&api, &Action::FocusPane("w2:p1".into()), &ctx(), "", "herdr").unwrap();
+        execute(&api, &Action::FocusWorkspace("w2".into()), &ctx(), "", "herdr", tmp().path()).unwrap();
+        execute(&api, &Action::FocusTab("w2:t1".into()), &ctx(), "", "herdr", tmp().path()).unwrap();
+        execute(&api, &Action::FocusPane("w2:p1".into()), &ctx(), "", "herdr", tmp().path()).unwrap();
         assert_eq!(
             api.calls(),
             [
@@ -100,14 +124,14 @@ mod tests {
     #[test]
     fn builtin_sends_its_request_with_input() {
         let api = FakeApi::new().ok("tab.rename", json!({}));
-        execute(&api, &Action::Builtin(Builtin::RenameTab), &ctx(), "Logs", "herdr").unwrap();
+        execute(&api, &Action::Builtin(Builtin::RenameTab), &ctx(), "Logs", "herdr", tmp().path()).unwrap();
         assert_eq!(api.calls(), [("tab.rename".to_string(), json!({"tab_id": "w1:t1", "label": "Logs"}))]);
     }
 
     #[test]
     fn builtin_validation_error_skips_the_socket() {
         let api = FakeApi::new();
-        let err = execute(&api, &Action::Builtin(Builtin::RenameTab), &ctx(), "  ", "herdr").unwrap_err();
+        let err = execute(&api, &Action::Builtin(Builtin::RenameTab), &ctx(), "  ", "herdr", tmp().path()).unwrap_err();
         assert_eq!(err, "label cannot be empty");
         assert!(api.calls().is_empty());
     }
@@ -115,7 +139,7 @@ mod tests {
     #[test]
     fn stale_target_api_error_is_returned_as_text() {
         let api = FakeApi::new().err("tab.focus", "tab_not_found", "tab w1:t9 not found");
-        let err = execute(&api, &Action::FocusTab("w1:t9".into()), &ctx(), "", "herdr").unwrap_err();
+        let err = execute(&api, &Action::FocusTab("w1:t9".into()), &ctx(), "", "herdr", tmp().path()).unwrap_err();
         assert_eq!(err, "tab.focus: tab w1:t9 not found (tab_not_found)");
     }
 
@@ -130,9 +154,24 @@ mod tests {
             keywords: vec![],
             cwd: None,
         };
-        execute(&FakeApi::new(), &Action::RunUser(cmd), &ctx(), "", "herdr").unwrap();
+        execute(&FakeApi::new(), &Action::RunUser(cmd), &ctx(), "", "herdr", dir.path()).unwrap();
         let cwd = wait_for(&marker);
         assert!(cwd.trim().ends_with("tmp"), "ran in {cwd}");
+    }
+
+    #[test]
+    fn detached_command_stderr_goes_to_palette_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let cmd = UserCommand {
+            title: "t".into(),
+            run: Some("echo oops >&2".into()),
+            argv: None,
+            keywords: vec![],
+            cwd: None,
+        };
+        execute(&FakeApi::new(), &Action::RunUser(cmd), &ctx(), "", "herdr", dir.path()).unwrap();
+        let log = wait_for(&dir.path().join("palette.log"));
+        assert!(log.contains("oops"), "{log}");
     }
 
     #[test]
@@ -144,7 +183,7 @@ mod tests {
             keywords: vec![],
             cwd: Some("/definitely/not/here".into()),
         };
-        let err = execute(&FakeApi::new(), &Action::RunUser(cmd), &ctx(), "", "herdr").unwrap_err();
+        let err = execute(&FakeApi::new(), &Action::RunUser(cmd), &ctx(), "", "herdr", tmp().path()).unwrap_err();
         assert!(err.starts_with("failed to start"), "{err}");
     }
 
@@ -157,7 +196,7 @@ mod tests {
         std::fs::set_permissions(&fake_herdr, std::fs::Permissions::from_mode(0o755)).unwrap();
 
         let api = FakeApi::new();
-        execute(&api, &Action::InvokePluginAction("a.b.c".into()), &ctx(), "", fake_herdr.to_str().unwrap()).unwrap();
+        execute(&api, &Action::InvokePluginAction("a.b.c".into()), &ctx(), "", fake_herdr.to_str().unwrap(), dir.path()).unwrap();
         assert!(!args_file.exists(), "invocation must be delayed until the palette exits");
         assert_eq!(wait_for(&args_file).trim(), "plugin action invoke a.b.c");
         assert!(api.calls().is_empty());

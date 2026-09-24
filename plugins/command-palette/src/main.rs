@@ -102,7 +102,7 @@ fn event_loop(
                     continue;
                 };
                 let (id, action) = (app.items[item].id.clone(), app.items[item].action.clone());
-                match exec::execute(client, &action, ctx, &input, herdr_bin) {
+                match exec::execute(client, &action, ctx, &input, herdr_bin, state_dir) {
                     Ok(()) => {
                         let now = now_unix();
                         frecency.record(&id, now);
