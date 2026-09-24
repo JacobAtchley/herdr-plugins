@@ -1,3 +1,4 @@
+mod app;
 mod frecency;
 mod exec;
 mod item;
