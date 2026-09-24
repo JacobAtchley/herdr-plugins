@@ -79,6 +79,17 @@ impl UserCommand {
     }
 }
 
+pub fn items(commands: &[UserCommand]) -> Vec<crate::item::Item> {
+    use crate::item::{Action, Item, Kind};
+    commands
+        .iter()
+        .map(|cmd| {
+            Item::new(Kind::User, format!("user:{}", cmd.title), &cmd.title, Action::RunUser(cmd.clone()))
+                .keywords(cmd.keywords.clone())
+        })
+        .collect()
+}
+
 fn expand_home(path: &str) -> PathBuf {
     match (path.strip_prefix('~'), std::env::var_os("HOME")) {
         (Some(rest), Some(home)) if rest.is_empty() || rest.starts_with('/') => {
@@ -195,5 +206,15 @@ mod tests {
         assert_eq!(expand_home("~/src"), std::path::PathBuf::from(&home).join("src"));
         assert_eq!(expand_home("/abs"), std::path::PathBuf::from("/abs"));
         assert_eq!(expand_home("~other"), std::path::PathBuf::from("~other"));
+    }
+
+    #[test]
+    fn items_use_title_as_id_and_keep_keywords() {
+        let cmds = parse("[[commands]]\ntitle = \"Deploy\"\nrun = \"x\"\nkeywords = [\"ship\"]\n").unwrap();
+        let items = items(&cmds);
+        assert_eq!(items[0].kind, crate::item::Kind::User);
+        assert_eq!(items[0].id, "user:Deploy");
+        assert_eq!(items[0].keywords, ["ship"]);
+        assert_eq!(items[0].action, crate::item::Action::RunUser(cmds[0].clone()));
     }
 }

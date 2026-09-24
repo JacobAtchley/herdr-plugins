@@ -185,6 +185,17 @@ impl Builtin {
     }
 }
 
+pub fn items() -> Vec<crate::item::Item> {
+    use crate::item::{Action, Item, Kind};
+    Builtin::ALL
+        .iter()
+        .map(|&builtin| {
+            Item::new(Kind::Command, format!("cmd:{}", builtin.slug()), builtin.title(), Action::Builtin(builtin))
+                .keywords(builtin.keywords().iter().map(|k| k.to_string()).collect())
+        })
+        .collect()
+}
+
 fn prompt(label: &str, initial: Option<&str>) -> Step {
     Step::Prompt { label: label.to_string(), initial: initial.unwrap_or_default().to_string() }
 }
@@ -325,5 +336,16 @@ mod tests {
             Builtin::CloseTab.step(&empty),
             Step::Confirm { question: "Close the current tab?".into() }
         );
+    }
+
+    #[test]
+    fn items_cover_every_builtin_as_commands() {
+        let items = items();
+        assert_eq!(items.len(), 16);
+        assert!(items.iter().all(|i| i.kind == crate::item::Kind::Command));
+        let split = items.iter().find(|i| i.id == "cmd:split-right").unwrap();
+        assert_eq!(split.title, "Split pane right");
+        assert_eq!(split.keywords, ["vertical"]);
+        assert_eq!(split.action, crate::item::Action::Builtin(Builtin::SplitRight));
     }
 }
