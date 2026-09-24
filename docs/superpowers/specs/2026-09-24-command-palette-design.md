@@ -109,7 +109,7 @@ command = ["cargo", "build", "--release", "--target-dir", "target"]
 id = "open"
 title = "Open command palette"
 contexts = ["workspace"]
-command = ["target/release/command-palette", "open"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin jacob.command-palette --entrypoint palette"]
 
 [[panes]]
 id = "palette"
@@ -120,8 +120,10 @@ height = "50%"
 command = ["target/release/command-palette", "ui"]
 ```
 
-- `open` calls `plugin.pane.open` for entrypoint `palette` via the socket, then
-  exits. It exists because keybindings target actions, not panes.
+- The `open` action exists because keybindings target actions, not panes. It
+  opens the `palette` popup through the herdr CLI. Verified on 0.9.1: the popup
+  process still receives `HERDR_PLUGIN_CONTEXT_JSON` describing the tiled pane
+  underneath.
 - `ui` is the interactive palette.
 
 ## User keybinding setup
@@ -155,10 +157,10 @@ default: dev
 # Build and link every plugin. Run this after any change.
 dev: build link
 
-# Build every plugin into its own target/ directory.
+# Run every plugin's own manifest [[build]] commands.
 build:
 
-# Link every plugins/*/herdr-plugin.toml that is not already linked.
+# Link (or relink) every plugins/*/herdr-plugin.toml.
 link:
 
 # Run all tests in the workspace.
@@ -168,8 +170,13 @@ test:
 dev-one name:
 ```
 
-- `link` is idempotent: it reads `herdr plugin list` and skips plugins that are
-  already linked, so rerunning `just` never fails.
+- `build` and `link` are implemented by `scripts/plugins.py`, which reads each
+  manifest with Python's `tomllib`. `build` runs the manifest's own `[[build]]`
+  commands (filtered by platform), so local builds match GitHub installs and
+  non-Rust plugins work without justfile changes.
+- `link` always runs `herdr plugin link`. Verified on 0.9.1: relinking an
+  already linked plugin succeeds and refreshes its manifest, so rerunning
+  `just` never fails.
 - Plugins are discovered by globbing `plugins/*/herdr-plugin.toml`; adding a
   plugin requires no justfile edits.
 - A rebuild is picked up on the next palette open without relinking, because
@@ -226,7 +233,7 @@ six run in parallel threads when the palette opens.
 | tabs | `tab.list` | `Workspace › Tab` |
 | agents | `agent.list` joined with pane/workspace data | `Agent (workspace)` with status dot |
 | builtins | static list | command name |
-| plugins | `plugin.action.list`, excluding `jacob.command-palette.open` | `plugin name: action title` |
+| plugins | `plugin.action.list`, excluding `jacob.command-palette.open` | action title, with the plugin id as subtitle (the listing carries no plugin name) |
 | user | `$HERDR_PLUGIN_CONFIG_DIR/commands.toml` | command title |
 
 A failing source logs its error and contributes no items; the footer notes it
@@ -258,9 +265,7 @@ underneath the popup, from `HERDR_PLUGIN_CONTEXT_JSON`).
 
 Each built-in maps to a socket request through a pure function
 `fn request(builtin, context, input) -> Request`, so the mapping is unit-tested
-without a socket. Reload config is the one exception: it runs
-`$HERDR_BIN_PATH server reload-config`, because that is the documented
-interface for it.
+without a socket. Reload config uses the `server.reload_config` socket method.
 
 ### User commands
 
@@ -278,7 +283,8 @@ title = "Open notes"
 argv = ["nvim", "~/notes.md"]    # alternative to `run`; exactly one required
 ```
 
-User commands run detached (stdio to null) so they survive the popup exiting.
+User commands run detached (stdio to null, own process group) so they survive
+the popup exiting.
 A missing file means no user commands. A parse error is shown in the footer
 with its line number; all other sources still load.
 
@@ -331,6 +337,10 @@ with its line number; all other sources still load.
 
 - After an action succeeds: update frecency, restore the terminal, exit. The
   popup closes when the process exits.
+- Plugin actions are launched as a detached `sh -c "sleep 0.2; herdr plugin
+  action invoke <id>"`. The popup is a session singleton, so an action that
+  opens its own popup would fail with `ui_busy` if invoked while the palette is
+  still open.
 - If an action fails, the palette stays open and shows the error in the footer
   in red. The user can retry or press `esc`.
 - If the socket is unreachable at startup, the palette shows the error and
@@ -346,8 +356,8 @@ with its line number; all other sources still load.
   including the frecency boost and highlight positions.
 - **Frecency:** decay math, pruning, corrupt-file recovery.
 - **User config:** `run` vs `argv`, both or neither set, invalid TOML.
-- **UI:** ratatui `TestBackend` snapshots for empty, filtered, prompt, confirm,
-  and error states.
+- **UI:** ratatui `TestBackend` renders for empty, filtered, prompt, confirm,
+  and error states, asserted line by line.
 - **Manual:** `just`, then `cmd+k` in live herdr, exercising every item kind.
 
 ## Out of scope for v1
