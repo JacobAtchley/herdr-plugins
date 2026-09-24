@@ -87,14 +87,17 @@ impl App {
             KeyCode::Char('n') if ctrl => self.move_selection(1),
             KeyCode::Char('u') if ctrl => {
                 self.query.clear();
+                self.clear_sticky_error();
                 self.refilter();
             }
             KeyCode::Backspace => {
                 self.query.pop();
+                self.clear_sticky_error();
                 self.refilter();
             }
             KeyCode::Char(c) if !ctrl => {
                 self.query.push(c);
+                self.clear_sticky_error();
                 self.refilter();
             }
             _ => {}
@@ -162,6 +165,14 @@ impl App {
     fn move_selection(&mut self, delta: isize) {
         let last = self.ranked.len().saturating_sub(1);
         self.selected = self.selected.saturating_add_signed(delta).min(last);
+    }
+
+    /// The query changing invalidates a stale action error, but an Info
+    /// notice (e.g. "agents unavailable") stays relevant regardless of query.
+    fn clear_sticky_error(&mut self) {
+        if matches!(self.status, Some(Status::Error(_))) {
+            self.status = None;
+        }
     }
 
     fn refilter(&mut self) {
@@ -349,6 +360,26 @@ mod tests {
         app.fail("label cannot be empty".into());
         assert!(matches!(app.mode, Mode::Prompt { .. }));
         assert_eq!(app.status, Some(Status::Error("label cannot be empty".into())));
+    }
+
+    #[test]
+    fn query_change_clears_sticky_error_but_keeps_info_notice() {
+        let mut app = app();
+        app.status = Some(Status::Error("tab.focus: gone (tab_not_found)".into()));
+        app.handle_key(ch('b'), &ctx());
+        assert_eq!(app.status, None);
+
+        app.status = Some(Status::Error("boom".into()));
+        app.handle_key(key(KeyCode::Backspace), &ctx());
+        assert_eq!(app.status, None);
+
+        app.status = Some(Status::Error("boom".into()));
+        app.handle_key(ctrl('u'), &ctx());
+        assert_eq!(app.status, None);
+
+        app.status = Some(Status::Info("agents unavailable".into()));
+        app.handle_key(ch('a'), &ctx());
+        assert_eq!(app.status, Some(Status::Info("agents unavailable".into())));
     }
 
     #[test]

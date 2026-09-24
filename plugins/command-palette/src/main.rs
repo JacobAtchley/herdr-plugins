@@ -60,7 +60,8 @@ fn run_ui() -> std::io::Result<()> {
             for notice in &loaded.notices {
                 log::append(&state_dir, notice);
             }
-            (loaded.items, loaded.notices.into_iter().next().map(Status::Info))
+            let status = sources::notice_status(&loaded.notices, loaded.remote_failures);
+            (loaded.items, status)
         }
         Err(err) => {
             log::append(&state_dir, &err.to_string());

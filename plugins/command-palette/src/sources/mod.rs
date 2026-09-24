@@ -10,12 +10,16 @@ use std::path::Path;
 use herdr_client::models::{Tab, Workspace};
 use herdr_client::{Api, Error, PluginContext};
 
+use crate::app::Status;
 use crate::item::Item;
 
 pub struct Loaded {
     pub items: Vec<Item>,
     /// One line per source that failed to load, for the footer and the log.
     pub notices: Vec<String>,
+    /// How many of the four remote sources (workspaces, tabs, agents, plugin
+    /// actions) failed to load.
+    pub remote_failures: usize,
 }
 
 /// Fetches every remote source in parallel, then builds items. A failing
@@ -35,10 +39,11 @@ pub fn load_all(api: &dyn Api, ctx: &PluginContext, config_dir: &Path) -> Loaded
     });
 
     let mut notices = Vec::new();
-    let ws = or_notice(workspace_list, "workspaces", &mut notices);
-    let tabs = or_notice(tab_list, "tabs", &mut notices);
-    let agents = or_notice(agent_list, "agents", &mut notices);
-    let actions = or_notice(action_list, "plugin actions", &mut notices);
+    let mut remote_failures = 0;
+    let ws = or_notice(workspace_list, "workspaces", &mut notices, &mut remote_failures);
+    let tabs = or_notice(tab_list, "tabs", &mut notices, &mut remote_failures);
+    let agents = or_notice(agent_list, "agents", &mut notices, &mut remote_failures);
+    let actions = or_notice(action_list, "plugin actions", &mut notices, &mut remote_failures);
 
     let mut items = Vec::new();
     items.extend(workspaces::items(&ws, ctx));
@@ -50,14 +55,31 @@ pub fn load_all(api: &dyn Api, ctx: &PluginContext, config_dir: &Path) -> Loaded
         Ok(commands) => items.extend(user::items(&commands)),
         Err(err) => notices.push(err),
     }
-    Loaded { items, notices }
+    Loaded { items, notices, remote_failures }
 }
 
-fn or_notice<T>(result: Result<Vec<T>, Error>, source: &str, notices: &mut Vec<String>) -> Vec<T> {
+fn or_notice<T>(result: Result<Vec<T>, Error>, source: &str, notices: &mut Vec<String>, failures: &mut usize) -> Vec<T> {
     result.unwrap_or_else(|err| {
         notices.push(format!("{source} unavailable: {err}"));
+        *failures += 1;
         Vec::new()
     })
+}
+
+/// Summarizes source-load notices for the footer. A single notice shows as
+/// Info, unchanged; several collapse into a count so the footer stays one
+/// line. If every remote source failed (herdr itself is unreachable), that
+/// takes priority and shows as an Error.
+pub fn notice_status(notices: &[String], remote_failures: usize) -> Option<Status> {
+    const REMOTE_SOURCES: usize = 4;
+    if remote_failures >= REMOTE_SOURCES {
+        return Some(Status::Error("herdr unreachable — see palette.log".to_string()));
+    }
+    match notices.len() {
+        0 => None,
+        1 => Some(Status::Info(notices[0].clone())),
+        n => Some(Status::Info(format!("{n} sources unavailable — see palette.log"))),
+    }
 }
 
 /// A workspace's label, `Workspace <n>` when blank, or its id when unknown.
@@ -117,6 +139,7 @@ mod tests {
         assert_eq!(loaded.notices, ["agents unavailable: agent.list: boom (internal)"]);
         assert!(loaded.items.iter().any(|i| i.kind == Kind::Workspace));
         assert!(!loaded.items.iter().any(|i| i.kind == Kind::Agent));
+        assert_eq!(loaded.remote_failures, 1);
     }
 
     #[test]
@@ -126,6 +149,7 @@ mod tests {
         let loaded = load_all(&api, &PluginContext::default(), dir.path());
         assert_eq!(loaded.items.iter().find(|i| i.kind == Kind::Tab).unwrap().title, "w1 › Claude");
         assert_eq!(loaded.notices.len(), 1);
+        assert_eq!(loaded.remote_failures, 1);
     }
 
     #[test]
@@ -143,6 +167,29 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let loaded = load_all(&FakeApi::new(), &PluginContext::default(), dir.path());
         assert_eq!(loaded.notices.len(), 4);
+        assert_eq!(loaded.remote_failures, 4);
         assert_eq!(kinds(&loaded), [Kind::Command]);
+    }
+
+    #[test]
+    fn notice_status_is_none_for_no_notices() {
+        assert_eq!(notice_status(&[], 0), None);
+    }
+
+    #[test]
+    fn notice_status_shows_a_single_notice_as_info() {
+        assert_eq!(notice_status(&["agents unavailable: boom".to_string()], 1), Some(Status::Info("agents unavailable: boom".to_string())));
+    }
+
+    #[test]
+    fn notice_status_collapses_several_notices_into_a_count() {
+        let notices = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        assert_eq!(notice_status(&notices, 2), Some(Status::Info("3 sources unavailable — see palette.log".to_string())));
+    }
+
+    #[test]
+    fn notice_status_is_an_error_when_every_remote_source_fails() {
+        let notices = vec!["a".to_string(), "b".to_string(), "c".to_string(), "d".to_string()];
+        assert_eq!(notice_status(&notices, 4), Some(Status::Error("herdr unreachable — see palette.log".to_string())));
     }
 }
