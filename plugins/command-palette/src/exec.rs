@@ -92,10 +92,10 @@ mod tests {
     fn wait_for(path: &Path) -> String {
         let deadline = Instant::now() + Duration::from_secs(3);
         while Instant::now() < deadline {
-            if let Ok(content) = std::fs::read_to_string(path) {
-                if !content.is_empty() {
-                    return content;
-                }
+            if let Ok(content) = std::fs::read_to_string(path)
+                && !content.is_empty()
+            {
+                return content;
             }
             std::thread::sleep(Duration::from_millis(20));
         }

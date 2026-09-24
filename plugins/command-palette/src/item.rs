@@ -29,6 +29,9 @@ impl Kind {
     }
 }
 
+// Variant names mirror the herdr operations they call (workspace.focus,
+// tab.focus, plugin.action.invoke, ...), not one another; keep them as-is.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     FocusWorkspace(String),

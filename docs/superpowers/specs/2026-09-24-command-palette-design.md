@@ -279,8 +279,8 @@ keywords = ["ship"]              # optional
 cwd = "~/project"                # optional; default: context pane cwd
 
 [[commands]]
-title = "Open notes"
-argv = ["nvim", "~/notes.md"]    # alternative to `run`; exactly one required
+title = "Open repo in browser"
+argv = ["gh", "browse"]       # alternative to `run`; exactly one is required
 ```
 
 User commands run detached (stdio to null, own process group) so they survive
