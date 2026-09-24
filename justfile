@@ -15,3 +15,9 @@ dev-one name: (build name) (link name)
 # Run every test in the cargo workspace.
 test:
     cargo test --workspace
+
+# Run the same checks as the CI gate on pull requests.
+ci:
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets -- -D warnings
+    cargo test --workspace

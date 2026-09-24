@@ -8,7 +8,11 @@ Custom [herdr](https://herdr.dev) plugins, built and linked from one repo.
 just          # build every plugin and link it with herdr
 just test     # run all tests
 just dev-one command-palette   # build + link one plugin
+just ci       # fmt + clippy + tests, same as the PR gate
 ```
+
+Pull requests into `main` must pass CI (`.github/workflows/ci.yml`: fmt,
+clippy with warnings denied, and tests on Linux and macOS) before merging.
 
 herdr launches plugin commands fresh each time, so after `just` the next
 invocation uses the new build. Relinking is safe; it refreshes the manifest.
