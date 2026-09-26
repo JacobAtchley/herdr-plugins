@@ -84,3 +84,40 @@ interactive programs.
 - `~/.local/state/herdr/plugins/jacob.command-palette/palette.log` has source
   failures and action errors.
 - `herdr plugin log list --plugin jacob.command-palette` shows launch failures.
+
+## Git glance (`plugins/git-glance`)
+
+Popup git status for the focused pane's repository: branch, upstream
+ahead/behind, stash count, and staged/unstaged/untracked/conflicted files.
+Stage, diff, commit, switch or create branches, and stash without leaving the
+pane you're in.
+
+### Keybinding
+
+```toml
+[[keys.command]]
+key = "cmd+g"
+type = "plugin_action"
+command = "jacob.git-glance.open"
+description = "git glance"
+```
+
+### Keys
+
+| View | Keys |
+|---|---|
+| Status | `j`/`k` or `↑`/`↓` move · `space` stage/unstage · `a` stage all · `u` unstage all · `enter`/`d` diff · `c` commit · `b` branches · `z` stashes · `S` stash changes · `r` refresh · `q`/`esc` close |
+| Diff | `j`/`k` scroll · `space`/`b` page · `g`/`G` top/bottom · `esc` back |
+| Branches | type to filter · `enter` switches, or creates the typed name when nothing matches · `esc` back |
+| Stashes | `enter`/`p` pop · `a` apply · `x` drop (asks first) · `esc` back |
+
+`S` stashes untracked files too. Commits use `git commit -m`, so hooks run but
+no editor opens. A failed commit keeps your message in the prompt.
+
+### Notes
+
+- The repo comes from the focused pane's cwd, then the workspace cwd.
+- Read-only git calls run with `GIT_OPTIONAL_LOCKS=0`, so opening the glance
+  never takes the index lock from an agent or editor working in the same repo.
+- Git errors show in the footer. The full text goes to
+  `~/.local/state/herdr/plugins/jacob.git-glance/glance.log`.
