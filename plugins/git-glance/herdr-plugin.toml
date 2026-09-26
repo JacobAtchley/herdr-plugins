@@ -1,0 +1,24 @@
+id = "jacob.git-glance"
+name = "Git Glance"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Popup git status for the focused pane's repo: stage, commit, switch branches, stash"
+platforms = ["macos", "linux"]
+
+[[build]]
+command = ["cargo", "build", "--release", "--target-dir", "target"]
+
+# Keybindings target actions, not panes, so this action opens the popup.
+[[actions]]
+id = "open"
+title = "Open git glance"
+contexts = ["workspace"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin jacob.git-glance --entrypoint glance"]
+
+[[panes]]
+id = "glance"
+title = "Git Glance"
+placement = "popup"
+width = "70%"
+height = "60%"
+command = ["target/release/git-glance", "ui"]
