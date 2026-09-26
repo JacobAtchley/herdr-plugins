@@ -1,0 +1,15 @@
+[package]
+name = "project-runner"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+herdr-client.workspace = true
+nucleo-matcher.workspace = true
+ratatui.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+unicode-segmentation.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
