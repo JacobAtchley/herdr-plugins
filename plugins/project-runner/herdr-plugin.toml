@@ -1,0 +1,24 @@
+id = "jacob.project-runner"
+name = "Project Runner"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Popup picker for package.json scripts; runs the chosen one in a new tab or split"
+platforms = ["macos", "linux"]
+
+[[build]]
+command = ["cargo", "build", "--release", "--target-dir", "target"]
+
+# Keybindings target actions, not panes, so this action opens the popup.
+[[actions]]
+id = "open"
+title = "Run a project script"
+contexts = ["workspace"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin jacob.project-runner --entrypoint runner"]
+
+[[panes]]
+id = "runner"
+title = "Project Runner"
+placement = "popup"
+width = "60%"
+height = "50%"
+command = ["target/release/project-runner", "ui"]

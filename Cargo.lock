@@ -960,6 +960,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "project-runner"
+version = "0.1.0"
+dependencies = [
+ "herdr-client",
+ "nucleo-matcher",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"

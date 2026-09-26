@@ -121,3 +121,32 @@ no editor opens. A failed commit keeps your message in the prompt.
   never takes the index lock from an agent or editor working in the same repo.
 - Git errors show in the footer. The full text goes to
   `~/.local/state/herdr/plugins/jacob.git-glance/glance.log`.
+
+## Project runner (`plugins/project-runner`)
+
+Popup picker for the `package.json` scripts of the focused pane's project.
+Pick one and it runs in a new tab (or split) as `<pm> run <script>`, so output
+stays visible and `ctrl-c` stops it.
+
+- Walks up from the focused pane's cwd to the repo root; the nearest
+  `package.json` **with scripts** wins, so a pane deep in an nx lib still finds
+  the root's helper scripts.
+- Package manager: `packageManager` field, else lockfile (pnpm, yarn, bun,
+  npm), else npm.
+- Scripts keep their `package.json` order; typing fuzzy-filters names and
+  commands (`serve api` finds `"start:api": "nx serve api"`).
+
+### Keybinding
+
+```toml
+[[keys.command]]
+key = "cmd+r"
+type = "plugin_action"
+command = "jacob.project-runner.open"
+description = "run project script"
+```
+
+### Keys
+
+`↑`/`↓` or `ctrl-p`/`ctrl-n` move · `enter` runs in a new tab · `ctrl-v` split
+right · `ctrl-x` split down · `esc` closes · `ctrl-u` clears.
