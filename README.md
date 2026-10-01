@@ -161,29 +161,28 @@ switcher, not host chrome filtering). Missing saved workspaces/tabs toast via
 
 State: `~/.local/state/herdr/plugins/jacob.zen-mode/zen.toml`.
 
-### Keybindings
+### Keybinding
+
+One binding opens the switcher. Activate or deactivate zen from inside it with
+`z` (no second shortcut required). `jacob.zen-mode.toggle` remains available
+from the command palette if you want it without a keybind.
 
 ```toml
-[[keys.command]]
-key = "cmd+z"
-type = "plugin_action"
-command = "jacob.zen-mode.toggle"
-description = "toggle zen mode"
-
 [[keys.command]]
 key = "cmd+shift+z"
 type = "plugin_action"
 command = "jacob.zen-mode.configure"
-description = "configure zen mode"
+description = "zen mode"
 ```
 
 ### Configure keys
 
 `↑`/`↓` or `j`/`k` move · `enter` focuses the selected tab (or workspace) and
-closes · `r` replace · `a` add workspace · `t` add tab · `d` remove · `esc`
-close. In pickers, type to filter · `enter` selects · `esc` backs out. Tabs and
-workspaces show agent status (`● working`, `blocked`, `done`, `idle`) when
-Herdr reports one.
+closes · `z` toggles zen on/off (on focuses a shortlist tab and closes; off
+stays in the popup) · `r` replace · `a` add workspace · `t` add tab · `d`
+remove · `esc` close. In pickers, type to filter · `enter` selects · `esc`
+backs out. Tabs and workspaces show agent status (`● working`, `blocked`,
+`done`, `idle`) when Herdr reports one.
 
 ### Notes / limits
 

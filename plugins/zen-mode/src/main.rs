@@ -89,10 +89,9 @@ fn run_ui() -> std::io::Result<()> {
     let loaded = load_app(&client, &dir);
     let mut terminal = ratatui::init();
     let result = match loaded {
-        Ok(mut app) => event_loop(&mut terminal, &mut app, &client, &dir),
+        Ok(mut app) => event_loop(&mut terminal, &mut app, &client, ctx.tab_id.as_deref(), &dir),
         Err(err) => {
             log::append(&dir, &err);
-            let _ = ctx;
             message_screen(&mut terminal, &err)
         }
     };
@@ -107,7 +106,13 @@ fn load_app(api: &impl Api, dir: &Path) -> Result<App, String> {
     Ok(App::new(state, workspaces, tabs))
 }
 
-fn event_loop(terminal: &mut DefaultTerminal, app: &mut App, api: &impl Api, state_dir: &Path) -> std::io::Result<()> {
+fn event_loop(
+    terminal: &mut DefaultTerminal,
+    app: &mut App,
+    api: &impl Api,
+    current_tab_id: Option<&str>,
+    state_dir: &Path,
+) -> std::io::Result<()> {
     loop {
         if app.take_dirty()
             && let Err(err) = app.state.save(state_dir)
@@ -152,6 +157,24 @@ fn event_loop(terminal: &mut DefaultTerminal, app: &mut App, api: &impl Api, sta
                     }
                 }
             }
+            Command::ToggleZen => match activate::toggle(api, &mut app.state, current_tab_id) {
+                Ok(outcome) => {
+                    if let Err(err) = app.state.save(state_dir) {
+                        log::append(state_dir, &err);
+                        app.status = Some(err);
+                        continue;
+                    }
+                    // activate::toggle already focuses when turning on with an available tab.
+                    if outcome.active && outcome.resolution.focus_tab_id.is_some() {
+                        return Ok(());
+                    }
+                    app.status = Some(toggle_summary(&outcome));
+                }
+                Err(err) => {
+                    log::append(state_dir, &err);
+                    app.status = Some(err);
+                }
+            },
         }
     }
 }

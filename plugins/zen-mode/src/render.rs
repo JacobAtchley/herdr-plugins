@@ -155,7 +155,7 @@ fn status_style(status: AgentStatus) -> Style {
 
 fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
     let hints = match app.mode {
-        Mode::Overview => "⏎ go  r replace  a add ws  t add tab  d remove  esc",
+        Mode::Overview => "⏎ go  z toggle  r replace  a add ws  t add tab  d remove  esc",
         Mode::PickWorkspace { .. } | Mode::PickTab { .. } => "type to filter  ⏎ select  esc back",
     };
     let left = Line::from(hints).dim();

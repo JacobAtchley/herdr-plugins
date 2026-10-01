@@ -17,6 +17,8 @@ pub enum Command {
     FocusWorkspace {
         workspace_id: String,
     },
+    /// Activate or deactivate zen from the switcher.
+    ToggleZen,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,6 +107,7 @@ impl App {
             KeyCode::Char('k') => self.move_selection(-1),
             KeyCode::Char('j') => self.move_selection(1),
             KeyCode::Enter => return self.activate_row(),
+            KeyCode::Char('z') => return Command::ToggleZen,
             KeyCode::Char('r') => self.edit_row(),
             KeyCode::Char('d') | KeyCode::Delete | KeyCode::Backspace => self.delete_row(),
             KeyCode::Char('a') => {
@@ -584,5 +587,11 @@ mod tests {
         app.selected = 1; // first tab
         app.handle_key(key(KeyCode::Char('d')));
         assert_eq!(app.state.workspaces[0].tab_ids, ["w1:t2"]);
+    }
+
+    #[test]
+    fn z_toggles_zen_from_overview() {
+        let mut app = sample();
+        assert_eq!(app.handle_key(key(KeyCode::Char('z'))), Command::ToggleZen);
     }
 }
