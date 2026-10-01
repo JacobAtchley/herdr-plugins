@@ -2,7 +2,13 @@
 resolver = "3"
 # Rust plugins must be listed here. Plugins in other languages live under
 # plugins/ too but are not cargo members.
-members = ["crates/herdr-client", "plugins/command-palette", "plugins/git-glance", "plugins/project-runner"]
+members = [
+    "crates/herdr-client",
+    "plugins/command-palette",
+    "plugins/git-glance",
+    "plugins/project-runner",
+    "plugins/zen-mode",
+]
 
 [workspace.package]
 edition = "2024"
