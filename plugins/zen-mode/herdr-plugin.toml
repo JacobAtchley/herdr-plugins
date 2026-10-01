@@ -1,0 +1,29 @@
+id = "jacob.zen-mode"
+name = "Zen Mode"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Switcher shortlist: up to two workspaces and three tabs each; toggle focus among the selection"
+platforms = ["macos", "linux"]
+
+[[build]]
+command = ["cargo", "build", "--release", "--target-dir", "target"]
+
+[[actions]]
+id = "configure"
+title = "Configure zen mode"
+contexts = ["workspace"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin jacob.zen-mode --entrypoint configure"]
+
+[[actions]]
+id = "toggle"
+title = "Toggle zen mode"
+contexts = ["workspace"]
+command = ["target/release/zen-mode", "toggle"]
+
+[[panes]]
+id = "configure"
+title = "Zen Mode"
+placement = "popup"
+width = "60%"
+height = "50%"
+command = ["target/release/zen-mode", "ui"]

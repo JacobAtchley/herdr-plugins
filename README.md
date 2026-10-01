@@ -150,3 +150,51 @@ description = "run project script"
 
 `↑`/`↓` or `ctrl-p`/`ctrl-n` move · `enter` runs in a new tab · `ctrl-v` split
 right · `ctrl-x` split down · `esc` closes · `ctrl-u` clears.
+
+## Zen mode (`plugins/zen-mode`)
+
+Switcher shortlist for focused work: pick up to **two workspaces** and **three
+tabs** in each, then toggle zen on to focus into that set. Deactivating keeps
+the selection. Unselected tabs stay open and visible in Herdr (this is a
+switcher, not host chrome filtering). Missing saved workspaces/tabs toast via
+`notification.show` and are skipped on activate.
+
+State: `~/.local/state/herdr/plugins/jacob.zen-mode/zen.toml`.
+
+### Keybinding
+
+One binding opens the switcher. Activate or deactivate zen from inside it with
+`z` (no second shortcut required). `jacob.zen-mode.toggle` remains available
+from the command palette if you want it without a keybind.
+
+```toml
+[[keys.command]]
+key = "cmd+shift+z"
+type = "plugin_action"
+command = "jacob.zen-mode.configure"
+description = "zen mode"
+```
+
+### Configure keys
+
+`↑`/`↓` or `j`/`k` move · `enter` focuses the selected tab (or workspace) and
+closes · `z` toggles zen on/off (on focuses a shortlist tab and closes; off
+stays in the popup) · `r` replace · `a` add workspace · `t` add tab · `d`
+remove · `esc` close. In pickers, type to filter · `enter` selects · `esc`
+backs out. Tabs and workspaces show agent status (`● working`, `blocked`,
+`done`, `idle`) when Herdr reports one.
+
+### Notes / limits
+
+- Zen does **not** hide unselected workspaces or tabs in Herdr’s sidebar or tab
+  bar. It only remembers a shortlist, toggles focus into it, and lets you jump
+  to a picked tab from configure.
+- Collapsing the left sidebar is a Herdr UI action, not something this plugin
+  can do on toggle. There is no sidebar collapse API for plugins today.
+  - Toggle manually: default `prefix+b` (`toggle_sidebar` in
+    `~/.config/herdr/config.toml`).
+  - Or start collapsed on next launch:
+    ```toml
+    sidebar_start_collapsed = true
+    sidebar_collapsed_mode = "hidden"   # or "compact" for a thin rail
+    ```
