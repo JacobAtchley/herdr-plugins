@@ -65,6 +65,13 @@ pub struct Agent {
     #[serde(default)]
     pub focused: bool,
     pub cwd: Option<String>,
+    /// Increases each time this agent's status changes; lower means it has
+    /// been in its current state longer.
+    #[serde(default)]
+    pub state_change_seq: Option<u64>,
+    /// The agent's terminal title without the leading status glyph.
+    #[serde(default, rename = "terminal_title_stripped")]
+    pub title: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

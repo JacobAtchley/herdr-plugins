@@ -4,6 +4,7 @@ resolver = "3"
 # plugins/ too but are not cargo members.
 members = [
     "crates/herdr-client",
+    "plugins/agent-inbox",
     "plugins/command-palette",
     "plugins/git-glance",
     "plugins/project-runner",

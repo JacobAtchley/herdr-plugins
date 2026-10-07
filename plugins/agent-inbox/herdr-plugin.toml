@@ -1,0 +1,24 @@
+id = "jacob.agent-inbox"
+name = "Agent Inbox"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Popup queue of agents that are blocked or done, with quick replies"
+platforms = ["macos", "linux"]
+
+[[build]]
+command = ["cargo", "build", "--release", "--target-dir", "target"]
+
+# Keybindings target actions, not panes, so this action opens the popup.
+[[actions]]
+id = "open"
+title = "Open agent inbox"
+contexts = ["workspace"]
+command = ["sh", "-c", "exec \"$HERDR_BIN_PATH\" plugin pane open --plugin jacob.agent-inbox --entrypoint inbox"]
+
+[[panes]]
+id = "inbox"
+title = "Agent Inbox"
+placement = "popup"
+width = "60%"
+height = "60%"
+command = ["target/release/agent-inbox", "ui"]
