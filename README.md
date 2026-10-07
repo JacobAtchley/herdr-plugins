@@ -151,6 +151,47 @@ description = "run project script"
 `↑`/`↓` or `ctrl-p`/`ctrl-n` move · `enter` runs in a new tab · `ctrl-v` split
 right · `ctrl-x` split down · `esc` closes · `ctrl-u` clears.
 
+## Agent inbox (`plugins/agent-inbox`)
+
+Popup queue of agents that need you. Blocked agents come first, then done
+ones; within each group the agent that changed state longest ago is on top.
+Working agents sit underneath so you can see they are busy. The list refreshes
+every second while the popup is open.
+
+Each agent shows one line of context: a blocked agent's question, or the
+first line of a done agent's last message. When neither can be found in the
+pane, the agent's session title shows instead.
+
+### Keybinding
+
+```toml
+[[keys.command]]
+key = "cmd+i"
+type = "plugin_action"
+command = "jacob.agent-inbox.open"
+description = "agent inbox"
+```
+
+### Keys
+
+`↑`/`↓`, `j`/`k` or `ctrl-p`/`ctrl-n` move · `enter` jumps to the agent and
+closes · `esc`/`q` close.
+
+| Selected agent | Keys |
+|---|---|
+| Blocked | `y` presses Enter (the dialog's highlighted "yes") · `n` presses Escape |
+| Done | `c` sends "continue" · `r` opens a reply prompt; `enter` sends it, `esc` cancels |
+
+After a quick reply the agent leaves the list until herdr reports a new state
+for it, and the cursor moves to the next one.
+
+### Notes
+
+- herdr does not report when a state started, so rows have no wait time; the
+  order comes from herdr's state change counter.
+- Errors show in the footer and go to
+  `~/.local/state/herdr/plugins/jacob.agent-inbox/inbox.log`.
+
 ## Zen mode (`plugins/zen-mode`)
 
 Switcher shortlist for focused work: pick up to **two workspaces** and **three
