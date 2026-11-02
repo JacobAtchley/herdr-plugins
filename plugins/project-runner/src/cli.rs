@@ -52,6 +52,7 @@ pub fn scripts(cwd: &Path, query: &str) -> Value {
         Ok(project) => project,
         Err(error) => return json!({ "ok": false, "error": error }),
     };
+    let shell = std::env::var("SHELL").unwrap_or_default();
     let ranked = ScriptMatcher::default().rank(query, &project.scripts);
     let scripts: Vec<Value> = ranked
         .iter()
@@ -63,6 +64,7 @@ pub fn scripts(cwd: &Path, query: &str) -> Value {
                 "command": script.command,
                 "segments": segments(&script.name, &r.highlights),
                 "argv": project.manager.argv(&script.name),
+                "split_argv": project.manager.shell_argv(&script.name, &shell),
             })
         })
         .collect();
@@ -145,6 +147,10 @@ mod tests {
         assert_eq!(names(&value), ["start:web", "start:api", "lint"]);
         for script in value["scripts"].as_array().unwrap() {
             assert_eq!(script["argv"], json!(["pnpm", "run", script["name"]]));
+            assert_eq!(
+                script["split_argv"].as_array().unwrap()[4..],
+                json!(["pnpm", "run", script["name"]]).as_array().unwrap()[..]
+            );
         }
         assert_eq!(value["scripts"][1]["command"], "nx serve api");
         assert_eq!(value["scripts"][1]["index"], 1);
