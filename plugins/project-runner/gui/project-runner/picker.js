@@ -14,6 +14,11 @@ export class Ordered {
     return ++this.issued;
   }
 
+  /** A newer query is still on its way, so the list on screen is stale. */
+  pending() {
+    return this.issued > this.applied;
+  }
+
   accept(n) {
     if (n < this.applied) return false;
     this.applied = n;
@@ -42,4 +47,12 @@ export function action(key) {
 /** `total` is how many scripts package.json has. */
 export function emptyMessage(total) {
   return total === 0 ? "no scripts in package.json" : "no matches";
+}
+
+/** The first row to show so `selected` stays among `rows` visible rows,
+ *  moving as little as possible (the TUI's offset rule). */
+export function scrollTo(selected, start, rows) {
+  if (rows <= 0 || selected < start) return selected;
+  if (selected >= start + rows) return selected - rows + 1;
+  return start;
 }

@@ -1,7 +1,7 @@
 // node --test: the runner's key, selection and ordering rules, without the app.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Ordered, move, action, emptyMessage } from "./picker.js";
+import { Ordered, move, action, emptyMessage, scrollTo } from "./picker.js";
 
 test("older results are dropped", () => {
   const o = new Ordered();
@@ -32,4 +32,25 @@ test("keys map like the TUI", () => {
 test("empty message tells no scripts from no matches", () => {
   assert.equal(emptyMessage(0), "no scripts in package.json");
   assert.equal(emptyMessage(3), "no matches");
+});
+
+test("scrolling keeps the selection on screen, like the TUI", () => {
+  assert.equal(scrollTo(0, 0, 10), 0);
+  assert.equal(scrollTo(9, 0, 10), 0);
+  assert.equal(scrollTo(10, 0, 10), 1);
+  assert.equal(scrollTo(24, 0, 10), 15);
+  assert.equal(scrollTo(3, 15, 10), 3);
+  assert.equal(scrollTo(0, 15, 10), 0);
+  assert.equal(scrollTo(5, 0, 0), 5);
+});
+
+test("an answer still on its way means the shown list is stale", () => {
+  const o = new Ordered();
+  assert.equal(o.pending(), false);
+  const first = o.next(), second = o.next();
+  assert.equal(o.pending(), true);
+  o.accept(first);
+  assert.equal(o.pending(), true);
+  o.accept(second);
+  assert.equal(o.pending(), false);
 });

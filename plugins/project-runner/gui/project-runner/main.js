@@ -7,7 +7,7 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { spaces, panes, focused, props, theme, run, closeOverlay, settings } from "herdr";
 import { scripts } from "./runner.js";
-import { Ordered, move, action, emptyMessage } from "./picker.js";
+import { Ordered, move, action, emptyMessage, scrollTo } from "./picker.js";
 
 const ROW = 24;
 
@@ -30,13 +30,21 @@ export default class ProjectRunner extends View {
     // The last answer: { ok: true, project, total, scripts } or { ok: false, error }.
     this.data = null;
     this.selected = 0;
+    // First row shown, and how many fit: the list draws only those, so the
+    // selection can always be kept on screen.
+    this.start = 0;
+    this.rows = 0;
     this.error = null;
+    // A launch asked for while a newer query was on its way waits for it.
+    this.queued = null;
     this.order = new Ordered();
     this.query = InputState.new({ placeholder: "Filter scripts" });
     this.query.on("change", (_e, cx) => this.load(cx));
     this.query.on("submit", (_e, cx) => this.launch("tab", cx));
     this.load(cx);
+    // The app settles focus after opening an overlay; its own popups focus twice.
     this.query.focus();
+    cx.timer.after(600, () => this.query.focus());
   }
 
   remote() {
@@ -57,7 +65,13 @@ export default class ProjectRunner extends View {
       if (!this.order.accept(n)) return;
       this.data = r;
       this.selected = 0;
+      this.start = 0;
       this.error = null;
+      const queued = this.queued;
+      if (queued && !this.order.pending()) {
+        this.queued = null;
+        this.launch(queued, cx);
+      }
       cx.notify();
     });
   }
@@ -69,6 +83,10 @@ export default class ProjectRunner extends View {
   /** `place` is "tab", "right" or "down". The popup closes once the app has
    *  taken the command; what goes wrong later shows as the app's own toast. */
   launch(place, cx) {
+    if (this.order.pending()) {
+      this.queued = place;
+      return;
+    }
     const script = this.list()[this.selected];
     // Enter can arrive both as the input's submit and as a key: launch once.
     if (!script || this.launched) return;
@@ -103,11 +121,23 @@ export default class ProjectRunner extends View {
     const len = this.list().length;
     switch (act) {
       case "close": return this.close();
-      case "up": this.selected = move(this.selected, -1, len); break;
-      case "down-move": this.selected = move(this.selected, 1, len); break;
+      case "up": this.select(move(this.selected, -1, len)); break;
+      case "down-move": this.select(move(this.selected, 1, len)); break;
       case "clear": this.query.set_value(""); this.load(cx); break;
       default: return this.launch(act, cx);
     }
+    cx.notify();
+  }
+
+  select(i) {
+    this.selected = i;
+    this.start = scrollTo(i, this.start, this.rows);
+  }
+
+  /** Wheel scrolling moves the window, not the selection. */
+  scroll(by, cx) {
+    const last = Math.max(0, this.list().length - this.rows);
+    this.start = Math.max(0, Math.min(last, this.start + by));
     cx.notify();
   }
 
@@ -116,8 +146,10 @@ export default class ProjectRunner extends View {
     return h_flex().id(`s-${script.index}`).h(ROW).flex_none().px(10).gap(12).items_center().rounded(6).cursor_pointer()
       .when(selected, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover))
       .on_click((e, cx) => {
+        // Keep typing going to the query after a click.
+        this.query.focus();
         if (e.click_count >= 2) return this.launch("tab", cx);
-        this.selected = i;
+        this.select(i);
         cx.notify();
       })
       .child(h_flex().w(220).flex_none().min_w(0).overflow_hidden()
@@ -141,8 +173,20 @@ export default class ProjectRunner extends View {
     }
     const list = this.list();
     if (!list.length) return this.message(t, emptyMessage(this.data.total));
-    return v_flex().id("scripts").flex_1().min_h(0).overflow_y_scrollbar().p(6)
-      .children(list.map((s, i) => this.row(s, i, t)));
+    const shown = list.slice(this.start, this.start + Math.max(this.rows, 1));
+    return v_flex().id("scripts").flex_1().min_h(0).overflow_hidden().p(6)
+      .on_size_change((size, cx) => {
+        const rows = Math.max(1, Math.floor((size.height - 12) / ROW));
+        if (rows === this.rows) return;
+        this.rows = rows;
+        this.start = scrollTo(this.selected, this.start, rows);
+        cx.notify();
+      })
+      .on_scroll_wheel((e, cx) => {
+        const lines = e.delta_lines ? -e.delta_lines.y : -e.delta.y / ROW;
+        this.scroll(Math.round(lines) || Math.sign(lines), cx);
+      })
+      .children(shown.map((s, i) => this.row(s, this.start + i, t)));
   }
 
   footer(t) {
