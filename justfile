@@ -21,3 +21,7 @@ ci:
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
     cargo test --workspace
+
+# Check every herdr-app mod the plugins ship (needs the Herdr desktop app).
+gui-check:
+    for mod in plugins/*/gui/*/; do herdr-app check "$mod" || exit 1; done

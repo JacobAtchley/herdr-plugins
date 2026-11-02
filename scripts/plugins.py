@@ -5,6 +5,9 @@ Each plugin is built by running the [[build]] commands from its own
 herdr-plugin.toml, so local builds match what `herdr plugin install` runs and
 plugins in any language work without changes here.
 
+Linking also links any herdr-app (desktop) mods a plugin ships under
+gui/<mod>/: each becomes a symlink in the app's mods folder.
+
 Usage: plugins.py build|link [plugin-dir-name ...]
 """
 
@@ -52,6 +55,26 @@ def link(manifest):
         stdout=subprocess.DEVNULL,
     )
     print(f"[{data['id']}] linked {manifest.parent.relative_to(ROOT)}", flush=True)
+    link_app_mods(data["id"], manifest.parent / "gui")
+
+
+def link_app_mods(plugin_id, gui):
+    if not gui.is_dir():
+        return
+    app_home = pathlib.Path(os.environ.get("HERDR_APP_HOME", pathlib.Path.home() / ".config" / "herdr-app"))
+    if not app_home.is_dir():
+        print(f"[{plugin_id}] no herdr app at {app_home}; skipped its app mods", flush=True)
+        return
+    for mod in sorted(p for p in gui.iterdir() if p.is_dir()):
+        target = app_home / "mods" / mod.name
+        if target.is_symlink():
+            target.unlink()
+        elif target.exists():
+            print(f"[{plugin_id}] {target} exists and isn't a link; left it alone", file=sys.stderr, flush=True)
+            continue
+        target.parent.mkdir(exist_ok=True)
+        target.symlink_to(mod)
+        print(f"[{plugin_id}] linked app mod {mod.name}", flush=True)
 
 
 def main():

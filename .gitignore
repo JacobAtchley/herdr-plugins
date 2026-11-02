@@ -432,3 +432,8 @@ FodyWeavers.xsd
 target/
 
 .DS_Store
+
+# herdr-app writes these into every mod folder
+plugins/*/gui/*/gpui-kit.d.ts
+plugins/*/gui/*/jsconfig.json
+plugins/*/gui/*/*.error
