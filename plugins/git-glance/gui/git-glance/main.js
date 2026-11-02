@@ -8,6 +8,9 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { spaces, panes, focused, props, theme, watchFolder, closeOverlay, run } from "herdr";
 import { glance } from "./glance.js";
+import { diff, diffRows, branches, refilter, stashes } from "./views.js";
+
+const VIEWS = { diff, branches, stashes };
 
 const SECTIONS = [
   ["conflict", "Conflicts"],
@@ -41,11 +44,22 @@ export default class GitGlance extends View {
     this.selected = 0;
     this.footer = null; // { level: "info" | "error", text }
     this.prompt = null; // { purpose: "commit" | "stash" }
+    this.view = { kind: "status" };
+    this.height = 0;
     this.inputs = {
       commit: InputState.new({ placeholder: "Commit message" }),
       stash: InputState.new({ placeholder: "Stash message (optional)" }),
+      branch: InputState.new({ placeholder: "Filter, or a new branch name" }),
     };
-    for (const input of Object.values(this.inputs)) input.on("submit", (_e, cx) => this.submitPrompt(cx));
+    this.inputs.commit.on("submit", (_e, cx) => this.submitPrompt(cx));
+    this.inputs.stash.on("submit", (_e, cx) => this.submitPrompt(cx));
+    this.inputs.branch.on("change", (_e, cx) => {
+      if (this.view.kind !== "branches") return;
+      this.view.query = this.inputs.branch.value();
+      refilter(this.view);
+      cx.notify();
+    });
+    this.inputs.branch.on("submit", (_e, cx) => this.view.kind === "branches" && branches.choose(this, cx));
     this.refresh(cx);
     this.handle.focus();
   }
@@ -103,6 +117,40 @@ export default class GitGlance extends View {
     return this.data?.snapshot.entries ?? [];
   }
 
+  /** Rows that fit the scrolling body (for paging the diff). */
+  page() {
+    return Math.max(1, Math.floor((this.height - 120) / 20));
+  }
+
+  back(cx) {
+    this.view = { kind: "status" };
+    this.handle.focus();
+    cx.notify();
+  }
+
+  openDiff(cx) {
+    const entry = this.entries()[this.selected];
+    if (!entry) return;
+    this.call(["diff", entry.path, "--section", entry.section], cx, (r) => {
+      this.view = { kind: "diff", title: r.diff.title, rows: diffRows(r.diff.text), scroll: 0 };
+    });
+  }
+
+  openBranches(cx) {
+    this.call(["branches"], cx, (r) => {
+      this.view = { kind: "branches", branches: r.branches, query: "", matches: [], selected: 0 };
+      refilter(this.view);
+      this.inputs.branch.set_value("");
+      this.inputs.branch.focus();
+    });
+  }
+
+  openStashes(cx) {
+    this.call(["stashes"], cx, (r) => {
+      this.view = { kind: "stashes", stashes: r.stashes, selected: 0, confirm: null };
+    });
+  }
+
   fail(text) {
     this.footer = { level: "error", text };
   }
@@ -154,6 +202,10 @@ export default class GitGlance extends View {
 
   key(e, cx) {
     const k = e.keystroke;
+    if (this.view.kind !== "status") {
+      if (VIEWS[this.view.kind].key(this, k, cx)) cx.stop_propagation();
+      return;
+    }
     if (this.prompt) {
       if (k === "escape") {
         this.closePrompt(cx);
@@ -176,6 +228,9 @@ export default class GitGlance extends View {
       case "u": if (snapshot?.has_staged) this.call(["unstage-all"], cx); break;
       case "c": this.openPrompt("commit", cx); break;
       case "shift-s": this.openPrompt("stash", cx); break;
+      case "enter": case "d": this.openDiff(cx); break;
+      case "b": this.openBranches(cx); break;
+      case "z": this.openStashes(cx); break;
       default: return;
     }
     cx.stop_propagation();
@@ -262,6 +317,7 @@ export default class GitGlance extends View {
     if (!this.cwd) return this.emptyState(t, "No folder: focus a terminal first");
     if (this.error) return this.emptyState(t, this.error);
     if (!this.data) return this.emptyState(t, "Loading…");
+    if (this.view.kind !== "status") return VIEWS[this.view.kind].render(this, t);
     return this.statusBody(t);
   }
 
@@ -272,8 +328,13 @@ export default class GitGlance extends View {
       .child(label);
   }
 
+  message(t) {
+    return div().when(Boolean(this.footer), (e) => e.px(12).py(4).text_size(12)
+      .text_color(this.footer.level === "error" ? t.ansi1 : t.ansi2).child(this.footer.text));
+  }
+
   footerBar(t) {
-    if (!this.data) return div();
+    if (!this.data || this.view.kind !== "status") return div();
     const s = this.data.snapshot;
     if (this.prompt) {
       const commit = this.prompt.purpose === "commit";
@@ -286,15 +347,13 @@ export default class GitGlance extends View {
         .child(this.button("prompt-cancel", "Cancel", true, (cx) => this.closePrompt(cx), t));
     }
     return v_flex().flex_none().border_t(1).border_color(t.border)
-      .when(Boolean(this.footer), (e) => e.child(div().px(12).pt(6).text_size(12)
-        .text_color(this.footer.level === "error" ? t.ansi1 : t.ansi2).child(this.footer.text)))
       .child(h_flex().p(8).gap(6).items_center()
         .child(this.button("stage-all", "Stage all", s.entries.length > 0, (cx) => this.call(["stage-all"], cx), t))
         .child(this.button("unstage-all", "Unstage all", s.has_staged, (cx) => this.call(["unstage-all"], cx), t))
         .child(div().flex_1())
         .child(this.button("stash", "Stash…", s.entries.length > 0, (cx) => this.openPrompt("stash", cx), t))
         .child(this.button("commit", "Commit…", s.has_staged, (cx) => this.openPrompt("commit", cx), t))
-        .child(div().text_size(11).text_color(t.dim).child("space stage · c commit · S stash")));
+        .child(div().text_size(11).text_color(t.dim).child("space stage · enter diff · c commit · S stash · b branches · z stashes")));
   }
 
   render(cx) {
@@ -302,8 +361,10 @@ export default class GitGlance extends View {
     const t = theme();
     return v_flex().id("git-glance").size_full().min_h(0).bg(t.background).text_color(t.foreground).text_size(13)
       .track_focus(this.handle).on_key_down((e, cx) => this.key(e, cx))
+      .on_size_change((size, cx) => { this.height = size.height; cx.notify(); })
       .child(this.header(t))
       .child(this.body(t))
+      .child(this.message(t))
       .child(this.footerBar(t));
   }
 }
