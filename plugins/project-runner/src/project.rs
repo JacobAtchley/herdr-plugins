@@ -36,6 +36,26 @@ impl Manager {
         format!("{} run {}", self.as_str(), shell_quote(script))
     }
 
+    /// The program and arguments that run `script`, for launchers that take
+    /// an argv rather than a shell line: the name stays one argument.
+    pub fn argv(self, script: &str) -> Vec<String> {
+        vec![self.as_str().to_string(), "run".to_string(), script.to_string()]
+    }
+
+    /// `argv` run inside `shell` as a login, interactive shell that stays open
+    /// when the script ends, the way the Herdr app starts a new tab's program;
+    /// its splits run argv bare. An empty `shell` means `/bin/sh`.
+    pub fn shell_argv(self, script: &str, shell: &str) -> Vec<String> {
+        let shell = if shell.is_empty() { "/bin/sh" } else { shell };
+        let mut argv = if Path::new(shell).file_name().is_some_and(|name| name == "fish") {
+            vec![shell.to_string(), "-lic".to_string(), format!("$argv; exec {shell} -li")]
+        } else {
+            vec![shell.to_string(), "-lic".to_string(), r#""$@"; exec "$0" -li"#.to_string(), shell.to_string()]
+        };
+        argv.extend(self.argv(script));
+        argv
+    }
+
     /// `packageManager` is corepack's `name@version` field.
     fn from_package_manager(field: &str) -> Option<Self> {
         match field.split('@').next()? {
@@ -179,6 +199,19 @@ enum StringOrOther {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shell_argv_wraps_run_line() {
+        assert_eq!(
+            Manager::Pnpm.shell_argv("build:prod", "/bin/zsh"),
+            ["/bin/zsh", "-lic", "\"$@\"; exec \"$0\" -li", "/bin/zsh", "pnpm", "run", "build:prod"]
+        );
+        assert_eq!(
+            Manager::Npm.shell_argv("it's", "/opt/homebrew/bin/fish"),
+            ["/opt/homebrew/bin/fish", "-lic", "$argv; exec /opt/homebrew/bin/fish -li", "npm", "run", "it's"]
+        );
+        assert_eq!(Manager::Npm.shell_argv("dev", "")[0], "/bin/sh");
+    }
 
     fn write(dir: &Path, file: &str, content: &str) {
         std::fs::create_dir_all(dir).unwrap();

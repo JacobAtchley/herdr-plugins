@@ -175,6 +175,24 @@ description = "run project script"
 `↑`/`↓` or `ctrl-p`/`ctrl-n` move · `enter` runs in a new tab · `ctrl-v` split
 right · `ctrl-x` split down · `esc` closes · `ctrl-u` clears.
 
+### In the Herdr app
+
+`plugins/project-runner/gui/project-runner` is the same picker as an app mod,
+linked into `~/.config/herdr-app/mods/` by `just`. The binary still finds the
+project and ranks the scripts (`project-runner scripts --cwd <dir> --query
+<q>` prints JSON), so results match the TUI. Add the key to the `global`
+section of `~/.config/herdr-app/keys.json`:
+
+```json
+"cmd-r": "mod.open:project-runner"
+```
+
+The keys are the ones above; clicking selects a script and double-clicking
+runs it in a new tab. The script runs inside your login shell, which stays
+open when it ends, so output stays visible and `ctrl-c` drops you to the
+prompt. Unlike the TUI, the command isn't added to your shell history. It
+works on local folders only.
+
 ## Agent inbox (`plugins/agent-inbox`)
 
 Popup queue of agents that need you. Blocked agents come first, then done
