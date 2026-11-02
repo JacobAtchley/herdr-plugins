@@ -469,6 +469,8 @@ version = "0.1.0"
 dependencies = [
  "herdr-client",
  "ratatui",
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 

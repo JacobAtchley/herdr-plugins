@@ -21,3 +21,12 @@ ci:
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
     cargo test --workspace
+    just gui-test
+
+# Check every herdr-app mod the plugins ship (needs the Herdr desktop app).
+gui-check:
+    for mod in plugins/*/gui/*/; do herdr-app check "$mod" || exit 1; done
+
+# Unit tests for the app mods' plain-JS logic (no app needed).
+gui-test:
+    node --test plugins/*/gui/*/*.test.mjs

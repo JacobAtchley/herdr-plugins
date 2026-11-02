@@ -4,12 +4,14 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use serde::Serialize;
+
 use crate::status::{self, Entry, Section, Snapshot};
 
 /// Diffs beyond this are cut off: the popup only needs a glance.
 const MAX_DIFF_BYTES: usize = 512 * 1024;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Branch {
     pub name: String,
     pub current: bool,
@@ -19,7 +21,7 @@ pub struct Branch {
     pub track: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Stash {
     /// Position in the stash list (`stash@{index}`).
     pub index: usize,
@@ -39,7 +41,6 @@ impl Repo {
         Ok(Self { root: PathBuf::from(root) })
     }
 
-    #[cfg(test)]
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -174,6 +175,9 @@ fn run_in(cwd: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
 
 fn run(cwd: &Path, args: &[&str], ok_codes: &[i32]) -> Result<Vec<u8>, String> {
     let out = Command::new("git")
+        // A file-system monitor would write daemon cookies under .git on every
+        // call, and the Herdr app's folder watch would answer with a refresh.
+        .args(["-c", "core.fsmonitor=false"])
         .arg("-C")
         .arg(cwd)
         .args(args)

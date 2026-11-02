@@ -122,6 +122,30 @@ no editor opens. A failed commit keeps your message in the prompt.
 - Git errors show in the footer. The full text goes to
   `~/.local/state/herdr/plugins/jacob.git-glance/glance.log`.
 
+### In the Herdr app
+
+The desktop app (herdr-app) gets the same glance as two mods under
+`plugins/git-glance/gui/`, which `just` links into `~/.config/herdr-app/mods/`:
+
+- `git-glance`: the glance itself, drawn natively. Every git action runs the
+  same Rust binary (`git-glance <command> --cwd <dir>`, which prints JSON), so
+  behaviour matches the TUI.
+- `git-glance-pane`: opens the glance as a pane on the right of the current
+  tab, or closes it if it's already there. The pane follows whichever
+  terminal you focus and refreshes when files change.
+
+Add the keys to the `global` section of `~/.config/herdr-app/keys.json`:
+
+```json
+"cmd-g": "mod.open:git-glance",
+"cmd-shift-g": "mod.open:git-glance-pane"
+```
+
+The keys match the table above; buttons and clicks work too (click a file's
+status letter, or double-click the row, to stage it). It works on local repos
+only. `just gui-check` runs `herdr-app check` on every app mod; it needs the
+app installed, so it isn't part of CI.
+
 ## Project runner (`plugins/project-runner`)
 
 Popup picker for the `package.json` scripts of the focused pane's project.

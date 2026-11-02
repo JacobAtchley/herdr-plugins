@@ -33,3 +33,5 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
+      - name: App mod tests
+        run: node --test plugins/*/gui/*/*.test.mjs
