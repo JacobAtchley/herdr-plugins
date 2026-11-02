@@ -360,4 +360,40 @@ mod tests {
         assert_eq!(execute(t.dir.path(), &Request::Status)["ok"], true);
         assert_eq!(std::fs::metadata(&index).unwrap().modified().unwrap(), before);
     }
+
+    /// A repo with git's file-system monitor on writes daemon cookies under
+    /// `.git` on every status unless the call turns it off, and the app's
+    /// folder watch would then refresh forever.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn status_writes_nothing_under_git_with_fsmonitor_on() {
+        fn newest(dir: &Path) -> std::time::SystemTime {
+            std::fs::read_dir(dir)
+                .unwrap()
+                .flatten()
+                .map(|e| {
+                    let meta = e.metadata().unwrap();
+                    if meta.is_dir() {
+                        newest(&e.path()).max(meta.modified().unwrap())
+                    } else {
+                        meta.modified().unwrap()
+                    }
+                })
+                .max()
+                .unwrap_or(std::time::UNIX_EPOCH)
+        }
+        let t = TestRepo::new();
+        t.write("a.txt", "x");
+        t.commit_all("first");
+        let git = |a: &[&str]| std::process::Command::new("git").args(a).current_dir(t.dir.path()).output().unwrap();
+        git(&["config", "core.fsmonitor", "true"]);
+        git(&["status"]); // starts the daemon outside the measured call
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        let git_dir = t.dir.path().join(".git");
+        let before = newest(&git_dir);
+        assert_eq!(execute(t.dir.path(), &Request::Status)["ok"], true);
+        let after = newest(&git_dir);
+        git(&["fsmonitor--daemon", "stop"]);
+        assert_eq!(after, before);
+    }
 }

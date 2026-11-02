@@ -175,6 +175,9 @@ fn run_in(cwd: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
 
 fn run(cwd: &Path, args: &[&str], ok_codes: &[i32]) -> Result<Vec<u8>, String> {
     let out = Command::new("git")
+        // A file-system monitor would write daemon cookies under .git on every
+        // call, and the Herdr app's folder watch would answer with a refresh.
+        .args(["-c", "core.fsmonitor=false"])
         .arg("-C")
         .arg(cwd)
         .args(args)

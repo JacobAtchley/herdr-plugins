@@ -9,6 +9,7 @@ import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { spaces, panes, focused, props, theme, watchFolder, closeOverlay, run } from "herdr";
 import { glance } from "./glance.js";
 import { diff, diffRows, branches, refilter, stashes } from "./views.js";
+import { Coalescer, Ordered, Watcher, freshContext } from "./lifecycle.js";
 
 const VIEWS = { diff, branches, stashes };
 
@@ -35,17 +36,14 @@ export default class GitGlance extends View {
   init(_props, cx) {
     this.handle = cx.focus_handle();
     this.overlay = props()?.overlay ?? null;
-    this.cwd = props()?.cwd || terminalFolder() || activeSpace()?.folder || null;
-    this.data = null; // last successful response with a snapshot
-    this.error = null;
-    this.loading = false;
-    this.watched = null;
+    // cwd, data (last response with a snapshot), error, footer ({ level, text }),
+    // prompt ({ purpose: "commit" | "stash" }), selected and view: all per repo.
+    Object.assign(this, freshContext(props()?.cwd || terminalFolder() || activeSpace()?.folder || null));
     this.busy = false;
-    this.selected = 0;
-    this.footer = null; // { level: "info" | "error", text }
-    this.prompt = null; // { purpose: "commit" | "stash" }
-    this.view = { kind: "status" };
     this.height = 0;
+    this.order = new Ordered();
+    this.watcher = new Watcher(watchFolder);
+    this.refresher = new Coalescer((cx) => this.status(cx));
     this.inputs = {
       commit: InputState.new({ placeholder: "Commit message" }),
       stash: InputState.new({ placeholder: "Stash message (optional)" }),
@@ -68,30 +66,25 @@ export default class GitGlance extends View {
     return Boolean(activeSpace()?.machine);
   }
 
-  /** Runs one CLI command and takes in whatever it returned. Actions wait
-   *  for each other; a refresh during an action is dropped (the action
-   *  returns a fresh snapshot anyway). */
+  /** Runs one action and takes in whatever it returned. Actions wait for
+   *  each other; refreshes run beside them, and `order` keeps an older
+   *  snapshot from replacing a newer one. */
   call(args, cx, then) {
-    if (!this.cwd || this.remote()) return;
-    const refresh = args[0] === "status";
-    if (this.busy) return;
-    if (!refresh) {
-      this.busy = true;
-      this.footer = null;
-    }
-    const cwd = this.cwd;
+    if (!this.cwd || this.remote() || this.busy) return;
+    this.busy = true;
+    this.footer = null;
+    const cwd = this.cwd, seq = this.order.next();
     cx.spawn(async (cx) => {
       const r = await glance(cwd, args);
-      if (!refresh) this.busy = false;
+      this.busy = false;
       if (cwd !== this.cwd) return;
       if (r.ok) {
-        if (r.snapshot) this.setData(r);
+        if (r.snapshot && this.order.accept(seq)) this.setData(r);
         this.error = null;
         if (r.notice) this.footer = { level: "info", text: r.notice };
-        this.watch(r.root, cx);
+        this.watcher.follow(r.root, cx, (cx) => this.refresh(cx));
         then?.(r, cx);
-      } else if (refresh || !this.data) {
-        this.data = null;
+      } else if (!this.data) {
         this.error = r.error;
       } else {
         this.footer = { level: "error", text: r.error };
@@ -100,8 +93,25 @@ export default class GitGlance extends View {
     });
   }
 
+  /** Bursts of file changes collapse into one status run plus one after it. */
   refresh(cx) {
-    this.call(["status"], cx);
+    if (!this.cwd || this.remote()) return;
+    this.refresher.request((run) => cx.spawn(run));
+  }
+
+  async status(cx) {
+    const cwd = this.cwd, seq = this.order.next();
+    const r = await glance(cwd, ["status"]);
+    if (cwd !== this.cwd || !this.order.accept(seq)) return;
+    if (r.ok) {
+      this.setData(r);
+      this.error = null;
+      this.watcher.follow(r.root, cx, (cx) => this.refresh(cx));
+    } else {
+      this.data = null;
+      this.error = r.error;
+    }
+    cx.notify();
   }
 
   /** Keeps the selection on the same file across refreshes when it's still there. */
@@ -237,32 +247,14 @@ export default class GitGlance extends View {
     cx.stop_propagation();
   }
 
-  /** Follows the repo on disk: one loop per root, ended when the root changes. */
-  watch(root, cx) {
-    if (!root || this.watched === root) return;
-    this.watched = root;
-    cx.spawn(async (cx) => {
-      try {
-        while (this.watched === root) {
-          await watchFolder(root);
-          if (this.watched === root) this.refresh(cx);
-        }
-      } catch {
-        if (this.watched === root) this.watched = null;
-      }
-    });
-  }
-
   /** As a pane, follow the terminal the person moves to; keep the last one
    *  while this pane (or another mod) has focus. */
   follow(cx) {
     if (this.overlay) return;
     const folder = terminalFolder();
     if (folder && folder !== this.cwd) {
-      this.cwd = folder;
-      this.data = null;
-      this.error = null;
-      this.watched = null;
+      Object.assign(this, freshContext(folder));
+      for (const input of Object.values(this.inputs)) input.set_value("");
       this.refresh(cx);
     }
   }
