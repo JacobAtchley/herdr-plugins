@@ -89,7 +89,7 @@ export default class GitGlance extends View {
         this.error = null;
         if (r.notice) this.footer = { level: "info", text: r.notice };
         this.watch(r.root, cx);
-        then?.(r);
+        then?.(r, cx);
       } else if (refresh || !this.data) {
         this.data = null;
         this.error = r.error;
@@ -191,13 +191,14 @@ export default class GitGlance extends View {
   submitPrompt(cx) {
     if (!this.prompt) return;
     const text = this.inputs[this.prompt.purpose].value().trim();
+    // The prompt stays open until git accepts, so a failed commit keeps its message.
+    const done = (_r, cx) => this.closePrompt(cx);
     if (this.prompt.purpose === "commit") {
       if (!text) return this.fail("commit message cannot be empty"), cx.notify();
-      this.call(["commit", "--message", text], cx);
+      this.call(["commit", "--message", text], cx, done);
     } else {
-      this.call(text ? ["stash-push", "--message", text] : ["stash-push"], cx);
+      this.call(text ? ["stash-push", "--message", text] : ["stash-push"], cx, done);
     }
-    this.closePrompt(cx);
   }
 
   key(e, cx) {

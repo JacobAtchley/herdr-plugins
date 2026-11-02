@@ -107,10 +107,10 @@ export const branches = {
     if (index !== undefined) {
       const b = v.branches[index];
       if (b.current) return app.back(cx);
-      return app.call(["switch", b.name], cx, () => app.back(cx));
+      return app.call(["switch", b.name], cx, (_r, cx) => app.back(cx));
     }
     const name = v.query.trim();
-    if (name) app.call(["switch", name, "--create"], cx, () => app.back(cx));
+    if (name) app.call(["switch", name, "--create"], cx, (_r, cx) => app.back(cx));
   },
 
   key(app, k, cx) {
@@ -159,7 +159,7 @@ export const stashes = {
     const v = app.view, target = v.stashes[v.selected];
     if (!target) return;
     if (verb === "drop") { v.confirm = target.index; cx.notify(); return; }
-    app.call(["stash", verb, String(target.index)], cx, () => app.back(cx));
+    app.call(["stash", verb, String(target.index)], cx, (_r, cx) => app.back(cx));
   },
 
   drop(app, cx) {
