@@ -1,4 +1,5 @@
 mod app;
+mod cli;
 mod launch;
 mod log;
 mod matcher;
@@ -20,7 +21,8 @@ use app::{App, Command};
 use project::Project;
 
 fn main() -> ExitCode {
-    match std::env::args().nth(1).as_deref() {
+    let args: Vec<String> = std::env::args().collect();
+    match args.get(1).map(String::as_str) {
         Some("ui") => match run_ui() {
             Ok(()) => ExitCode::SUCCESS,
             Err(err) => {
@@ -28,8 +30,9 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        _ => {
-            eprintln!("usage: project-runner ui");
+        Some(_) => cli::main(&args[1..]),
+        None => {
+            eprintln!("usage: project-runner ui | project-runner scripts --cwd <dir> [--query <q>]");
             ExitCode::from(2)
         }
     }

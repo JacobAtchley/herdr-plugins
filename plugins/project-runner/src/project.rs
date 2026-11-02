@@ -36,6 +36,12 @@ impl Manager {
         format!("{} run {}", self.as_str(), shell_quote(script))
     }
 
+    /// The program and arguments that run `script`, for launchers that take
+    /// an argv rather than a shell line: the name stays one argument.
+    pub fn argv(self, script: &str) -> Vec<String> {
+        vec![self.as_str().to_string(), "run".to_string(), script.to_string()]
+    }
+
     /// `packageManager` is corepack's `name@version` field.
     fn from_package_manager(field: &str) -> Option<Self> {
         match field.split('@').next()? {
