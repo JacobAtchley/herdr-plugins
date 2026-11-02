@@ -430,3 +430,5 @@ FodyWeavers.xsd
 
 # Rust build output (workspace root and per-plugin target dirs)
 target/
+
+.DS_Store
