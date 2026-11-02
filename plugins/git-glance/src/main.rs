@@ -1,4 +1,5 @@
 mod app;
+mod cli;
 mod git;
 mod log;
 mod ops;
@@ -26,8 +27,9 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        _ => {
-            eprintln!("usage: git-glance ui");
+        Some(_) => cli::main(&std::env::args().skip(1).collect::<Vec<_>>()),
+        None => {
+            eprintln!("usage: git-glance ui | git-glance <command> --cwd <dir>");
             ExitCode::from(2)
         }
     }

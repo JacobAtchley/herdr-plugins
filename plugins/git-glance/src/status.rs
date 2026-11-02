@@ -1,6 +1,8 @@
 //! Parses `git status --porcelain=v2 --branch --show-stash -z`.
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct Snapshot {
     pub branch: BranchInfo,
     pub stashes: usize,
@@ -8,7 +10,7 @@ pub struct Snapshot {
     pub entries: Vec<Entry>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct BranchInfo {
     /// `None` when HEAD is detached.
     pub head: Option<String>,
@@ -19,7 +21,8 @@ pub struct BranchInfo {
     pub behind: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Section {
     Conflict,
     Staged,
@@ -38,7 +41,7 @@ impl Section {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Entry {
     pub section: Section,
     /// Status letter for the section: `M`, `A`, `D`, `R`, `C`, `T`, `U` or `?`.
